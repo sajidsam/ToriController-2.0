@@ -1,64 +1,60 @@
 {
-  "name": "toricontroller",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "main": "electron/main.cjs",
-
-  "scripts": {
-    "dev": "vite",
-    "electron": "electron .",
-    "start": "concurrently \"vite\" \"electron .\"",
-
-    "build": "vite build",
-    "dist": "npm run build && electron-builder",
-
-    "preview": "vite preview",
-    "lint": "eslint ."
-  },
-
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
-  },
-
-  "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-
-    "concurrently": "^9.2.1",
-    "electron": "^41.2.0",
-    "electron-builder": "^26.8.1",
-
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "vite": "^8.0.4"
-  },
-
-  "build": {
-    "appId": "com.toricontroller.app",
-    "productName": "ToriController",
-    "directories": {
-      "output": "dist-electron"
+    "name": "toricontroller",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "main": "electron/main.cjs",
+    "scripts": {
+        "dev": "vite",
+        "electron": "electron .",
+        "start": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+        "build": "vite build",
+        "dist": "npm run build && electron-builder",
+        "preview": "vite preview",
+        "lint": "eslint ."
     },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": "nsis",
-      "icon": "assets/toriLogo.ico"
+    "dependencies": {
+        "lucide-react": "^1.8.0",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4"
     },
-    "mac": {
-      "target": "dmg"
+    "devDependencies": {
+        "@eslint/js": "^9.39.4",
+        "@tailwindcss/vite": "^4.2.2",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.1",
+        "concurrently": "^9.2.1",
+        "electron": "^41.2.0",
+        "electron-builder": "^26.8.1",
+        "eslint": "^9.39.4",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.5.2",
+        "globals": "^17.4.0",
+        "tailwindcss": "^4.2.2",
+        "vite": "^8.0.4",
+        "wait-on": "^9.0.5"
     },
-    "linux": {
-      "target": "AppImage"
+    "build": {
+        "appId": "com.toricontroller.app",
+        "productName": "ToriController",
+        "directories": {
+            "output": "dist-electron"
+        },
+        "files": [
+            "dist/**/*",
+            "electron/**/*",
+            "package.json"
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "assets/toriLogo.ico"
+        },
+        "mac": {
+            "target": "dmg"
+        },
+        "linux": {
+            "target": "AppImage"
+        }
     }
-  }
 }

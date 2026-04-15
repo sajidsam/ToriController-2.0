@@ -15,7 +15,7 @@ const TitleBar = () => {
 
   return (
     <div className="h-10 w-full flex items-center justify-between bg-zinc-900 text-white select-none px-3">
-      
+
       {/* App Title */}
       <div className="text-sm font-semibold">
         Tori - The Vessel
@@ -23,7 +23,7 @@ const TitleBar = () => {
 
       {/* Controls */}
       <div className="flex gap-3">
-        
+
         <button
           onClick={handleMinimize}
           className="hover:bg-zinc-700 px-2 rounded"
