@@ -3,7 +3,7 @@ import { CameraOff, Navigation, Crosshair, FastForward, Move3d } from 'lucide-re
 
 
 
-const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0 }) => {
+const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl }) => {
   // Generate cache buster exactly once per mount so the feed doesn't flicker/restart on every telemetry update
   const cacheBuster = React.useMemo(() => Date.now(), []);
 
@@ -28,11 +28,10 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
             </div>
 
             {/* Live Camera Feed */}
-            <iframe
-                src="http://10.200.136.119/"
-                title="Submarine Camera Feed"
-                className="absolute inset-0 w-full h-full z-10 pointer-events-none border-none"
-                scrolling="no"
+            <img
+                src={cameraUrl || "http://10.76.18.119/"}
+                alt="Submarine Camera Feed"
+                className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none"
             />
 
 

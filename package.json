@@ -51,7 +51,8 @@
             "icon": "src/assets/hero.ico"
         },
         "mac": {
-            "target": "dmg"
+            "target": "dmg",
+            "icon": "src/assets/hero_512.png"
         },
         "linux": {
             "target": "AppImage"

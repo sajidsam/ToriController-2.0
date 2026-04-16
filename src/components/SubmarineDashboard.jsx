@@ -31,7 +31,8 @@ const SubmarineDashboard = () => {
   const [keyHint, setKeyHint] = useState('Use ↑ ↓ ← → and Spacebar');
 
   // Connectivity State
-  const [ipAddress, setIpAddress] = useState('10.200.136.98'); // Change to your ESP32's IP
+  const [ipAddress, setIpAddress] = useState('10.76.18.98'); // Change to your ESP32's IP
+  const [cameraUrl, setCameraUrl] = useState('http://10.76.18.88:8080/video'); // IP Webcam URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
 
   // Refs for persistent connection state
@@ -301,6 +302,7 @@ const SubmarineDashboard = () => {
         batteryPct={batteryPct}
         isLeaking={isLeaking}
         ipAddress={ipAddress} setIpAddress={setIpAddress}
+        cameraUrl={cameraUrl} setCameraUrl={setCameraUrl}
         isUsbConnected={isUsbConnected} connectUsb={connectUsb}
       />
 
@@ -321,6 +323,7 @@ const SubmarineDashboard = () => {
             frontFinAngle={frontFinAngle}
             rearFinX={rearFinX}
             rearFinY={rearFinY}
+            cameraUrl={cameraUrl}
         />
 
         <ControlPanel

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Wifi, WifiOff, Battery, BatteryFull, BatteryMedium, BatteryLow, BatteryWarning, AlertTriangle, ShieldCheck, Usb, Globe } from 'lucide-react';
+import { Wifi, WifiOff, Battery, BatteryFull, BatteryMedium, BatteryLow, BatteryWarning, AlertTriangle, ShieldCheck, Usb, Globe, Camera } from 'lucide-react';
 
-const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddress, setIpAddress, isUsbConnected, connectUsb }) => {
+const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddress, setIpAddress, cameraUrl, setCameraUrl, isUsbConnected, connectUsb }) => {
   return (
     <div className="flex justify-between items-center bg-zinc-900 border-b border-zinc-800 p-2 text-zinc-300 select-none">
 
@@ -28,7 +28,7 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
         {/* Dynamic Controls (Swap between IP and USB Connect mode) */}
         <div className="flex items-center gap-2 border-l border-zinc-700 pl-2 ml-2">
             {!isUsbConnected && (
-                <div className="flex items-center bg-zinc-900 rounded border border-zinc-700 px-2 py-1">
+                <div className="flex items-center bg-zinc-900 rounded border border-zinc-700 px-2 py-1" title="ESP32 IP Address">
                     <Globe size={14} className="text-zinc-500 mr-2" />
                     <input
                         type="text"
@@ -39,6 +39,16 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
                     />
                 </div>
             )}
+            <div className="flex items-center bg-zinc-900 rounded border border-zinc-700 px-2 py-1" title="Camera URL">
+                <Camera size={14} className="text-zinc-500 mr-2" />
+                <input
+                    type="text"
+                    value={cameraUrl}
+                    onChange={(e) => setCameraUrl(e.target.value)}
+                    className="bg-transparent border-none text-xs text-zinc-300 font-mono outline-none w-48 placeholder-zinc-600"
+                    placeholder="http://192.168.x.x:8080/video"
+                />
+            </div>
             <button
                 onClick={connectUsb}
                 className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded transition-colors ${isUsbConnected ? 'bg-blue-600 hover:bg-red-600 text-white' : 'bg-zinc-700 hover:bg-blue-600 text-zinc-300'}`}
