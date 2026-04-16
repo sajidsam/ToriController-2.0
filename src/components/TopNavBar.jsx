@@ -7,7 +7,7 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
 
       {/* Signal / Connectivity Controls */}
       <div className="flex items-center gap-2 px-3 py-1 rounded bg-zinc-800/50">
-        
+
         {/* Signal Icon */}
         <div className="flex items-center gap-2" title={isUsbConnected ? "Connected via USB Serial" : "Connected via WiFi HTTP"}>
             {isUsbConnected ? (
@@ -19,7 +19,7 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
             ) : (
                 <WifiOff className="text-red-500" size={20} />
             )}
-            
+
             <span className={`font-mono font-bold hidden sm:block ${isUsbConnected ? 'text-blue-400' : signalStrength > 70 ? 'text-green-500' : signalStrength > 30 ? 'text-yellow-500' : 'text-red-500'}`}>
                 {isUsbConnected ? 'USB SERIAL' : `${signalStrength}% SIGNAL`}
             </span>
@@ -30,16 +30,16 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
             {!isUsbConnected && (
                 <div className="flex items-center bg-zinc-900 rounded border border-zinc-700 px-2 py-1">
                     <Globe size={14} className="text-zinc-500 mr-2" />
-                    <input 
-                        type="text" 
-                        value={ipAddress} 
-                        onChange={(e) => setIpAddress(e.target.value)} 
+                    <input
+                        type="text"
+                        value={ipAddress}
+                        onChange={(e) => setIpAddress(e.target.value)}
                         className="bg-transparent border-none text-xs text-zinc-300 font-mono outline-none w-28 placeholder-zinc-600"
                         placeholder="192.168.x.x"
                     />
                 </div>
             )}
-            <button 
+            <button
                 onClick={connectUsb}
                 className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded transition-colors ${isUsbConnected ? 'bg-blue-600 hover:bg-red-600 text-white' : 'bg-zinc-700 hover:bg-blue-600 text-zinc-300'}`}
             >

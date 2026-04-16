@@ -68,7 +68,7 @@ const Joystick = ({ x, y, onChange }) => {
 
   // Keyboard Handlers
   useEffect(() => {
-    const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+    const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 
     // Keyboard state tracking (allows diagonal movement)
     let kx = 0;
@@ -78,10 +78,10 @@ const Joystick = ({ x, y, onChange }) => {
     const processKeys = () => {
         let newX = 0;
         let newY = 0;
-        if (keys.w || keys.ArrowUp) newY += maxVal;
-        if (keys.s || keys.ArrowDown) newY -= maxVal;
-        if (keys.d || keys.ArrowRight) newX += maxVal;
-        if (keys.a || keys.ArrowLeft) newX -= maxVal;
+        if (keys.ArrowUp) newY += maxVal;
+        if (keys.ArrowDown) newY -= maxVal;
+        if (keys.ArrowRight) newX += maxVal;
+        if (keys.ArrowLeft) newX -= maxVal;
 
         // Normalize diagonals to max distance
         if (newX !== 0 && newY !== 0) {
@@ -162,7 +162,7 @@ const Joystick = ({ x, y, onChange }) => {
             <span className="bg-zinc-900 px-2 py-1 rounded">X: {x.toString().padStart(3, ' ')}°</span>
             <span className="bg-zinc-900 px-2 py-1 rounded">Y: {y.toString().padStart(3, ' ')}°</span>
         </div>
-        <div className="text-[10px] text-zinc-600 font-mono text-center">Use WASD, Arrows, or Touch to steer</div>
+        <div className="text-[10px] text-zinc-600 font-mono text-center">Use Arrow Keys or Touch to steer</div>
     </div>
   );
 };

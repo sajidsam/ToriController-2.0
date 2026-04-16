@@ -1,7 +1,7 @@
 import React from 'react';
 import { Waves, Zap, Gauge, Thermometer } from 'lucide-react';
 
-const TelemetryPanel = ({ depth, amps, rpm, temp }) => {
+const TelemetryPanel = ({ depth, amps, rpm, temp, tempError }) => {
 
   // Warnings
   const highAmps = amps > 15; // Motor Stall Risk
@@ -10,12 +10,13 @@ const TelemetryPanel = ({ depth, amps, rpm, temp }) => {
   const deepDepth = depth > 10; // Depth Warning
 
   return (
-    <div className="flex flex-col gap-3 w-64 bg-zinc-950 p-4 border-r border-zinc-800 text-zinc-300 shrink-0 h-full overflow-y-auto">
+    <div className="flex flex-col lg:w-64 w-full bg-zinc-950 p-4 lg:border-r lg:border-b-0 border-b border-zinc-800 text-zinc-300 shrink-0 lg:h-full lg:overflow-y-auto">
 
       <div className="text-xs font-bold text-zinc-500 mb-2 uppercase tracking-widest border-b border-zinc-800 pb-2">
         Telemetry Data
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
       {/* Depth Gauge */}
       <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors ${deepDepth ? 'bg-red-950/30 border-red-900/50 text-red-400' : 'bg-zinc-900 border-zinc-800'}`}>
         <div className="flex items-center gap-2 text-sm text-zinc-500 font-semibold mb-1">
@@ -56,16 +57,25 @@ const TelemetryPanel = ({ depth, amps, rpm, temp }) => {
       </div>
 
       {/* Internal Temperature */}
-      <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors ${highTemp ? 'bg-red-950/30 border-red-900/50 text-red-400' : 'bg-zinc-900 border-zinc-800'}`}>
+      <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors relative overflow-hidden ${tempError ? 'bg-rose-950/20 border-rose-900/40' : (highTemp ? 'bg-red-950/30 border-red-900/50 text-red-400' : 'bg-zinc-900 border-zinc-800')}`}>
         <div className="flex items-center gap-2 text-sm text-zinc-500 font-semibold mb-1">
             <Thermometer size={16} className={highTemp ? 'text-red-500 animate-pulse' : 'text-orange-500'} />
             INTERNAL TEMP
         </div>
-        <div className="text-3xl font-mono font-bold tracking-tighter">
+        <div className={`text-3xl font-mono font-bold tracking-tighter ${tempError ? 'opacity-30' : ''}`}>
             {temp.toFixed(1)}
             <span className="text-lg text-zinc-600 ml-1">°C</span>
         </div>
-        {highTemp && <div className="text-xs font-bold text-red-500">OVERHEATING</div>}
+        {highTemp && !tempError && <div className="text-xs font-bold text-red-500">OVERHEATING</div>}
+
+        {/* Error Overlay */}
+        {tempError && (
+             <div className="absolute inset-0 bg-red-950/80 backdrop-blur-sm flex flex-col items-center justify-center border border-red-900/50 p-2 text-center rounded-lg">
+                 <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest break-words w-full line-clamp-2 leading-tight">Error: {tempError}</span>
+             </div>
+        )}
+      </div>
+
       </div>
 
     </div>

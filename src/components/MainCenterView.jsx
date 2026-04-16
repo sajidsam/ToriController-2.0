@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { CameraOff, Navigation, Crosshair, FastForward, Move3d } from 'lucide-react';
 
+
+
 const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0 }) => {
+  // Generate cache buster exactly once per mount so the feed doesn't flicker/restart on every telemetry update
+  const cacheBuster = React.useMemo(() => Date.now(), []);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-black p-4 relative overflow-hidden h-full gap-4">
 
@@ -9,27 +14,37 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
         <div className="absolute inset-0 bg-gradient-to-b from-[#001122] to-[#000a14] opacity-50 z-0"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent to-black z-0 pointer-events-none"></div>
 
-        {/* Camera Feed Placeholder box */}
-        <div className="relative z-10 w-full max-w-4xl aspect-video bg-zinc-950/80 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/5 backdrop-blur-sm">
-            <div className="absolute top-4 left-4 flex gap-2">
-                <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">REC</span>
-                <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur">CAM 1: FRONT</span>
+        <div
+            className="relative z-10 w-full max-w-4xl aspect-video bg-zinc-950/80 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/5 backdrop-blur-sm"
+            style={{ perspective: '1000px' }}
+        >
+            <div className="absolute top-4 left-4 flex gap-2 z-40">
+                <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">SIM</span>
+                <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
             </div>
 
-            <div className="text-zinc-700 flex flex-col items-center gap-2">
-                <CameraOff size={48} className="opacity-50" />
-                <span className="text-sm font-mono tracking-widest font-bold opacity-50">NO SIGNAL DETECTED</span>
-                <span className="text-xs font-mono opacity-30">Awaiting WebRTC Stream</span>
+            <div className="text-zinc-700 flex flex-col items-center gap-2 absolute z-0 mt-32">
+                <span className="text-xs font-mono tracking-widest font-bold opacity-30">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
             </div>
+
+            {/* Live Camera Feed */}
+            <iframe
+                src="http://10.200.136.119/"
+                title="Submarine Camera Feed"
+                className="absolute inset-0 w-full h-full z-10 pointer-events-none border-none"
+                scrolling="no"
+            />
+
+
 
             {/* Center Crosshair Overlay */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <Crosshair size={120} className="text-green-500/20" strokeWidth={1} />
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-40 mix-blend-screen">
+                <Crosshair size={250} className="text-cyan-500/10" strokeWidth={0.5} />
             </div>
         </div>
 
         {/* Attitude and Compass Overlay underneath camera */}
-        <div className="relative z-10 flex gap-8 w-full max-w-4xl justify-center mt-4">
+        <div className="relative z-10 flex flex-wrap gap-4 lg:gap-8 w-full max-w-4xl justify-center mt-4">
 
             {/* Artificial Horizon (Textual & Basic Visual for now) */}
             <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-700 p-4 rounded-xl flex-1 flex items-center gap-6 shadow-xl">

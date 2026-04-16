@@ -48,7 +48,7 @@
         ],
         "win": {
             "target": "nsis",
-            "icon": "assets/toriLogo.ico"
+            "icon": "src/assets/hero.ico"
         },
         "mac": {
             "target": "dmg"
