@@ -1,7 +1,7 @@
 import React from 'react';
 import { Waves, Zap, Gauge, Thermometer } from 'lucide-react';
 
-const TelemetryPanel = ({ depth, amps, rpm, temp, tempError }) => {
+const TelemetryPanel = ({ depth, amps, rpm, temp, tempError, lat, lng, sats }) => {
 
   // Warnings
   const highAmps = amps > 15; // Motor Stall Risk
@@ -54,6 +54,28 @@ const TelemetryPanel = ({ depth, amps, rpm, temp, tempError }) => {
             <span className="text-lg text-zinc-600 ml-1">rpm</span>
         </div>
         {highRpm && <div className="text-xs font-bold text-orange-500">CAVITATION RISK</div>}
+      </div>
+
+      {/* GPS Location */}
+      <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors ${sats === -2 ? 'bg-rose-950/20 border-rose-900/40' : 'bg-zinc-900 border-zinc-800'}`}>
+        <div className="flex items-center gap-2 text-sm text-zinc-500 font-semibold mb-1">
+            <span className={sats > 0 ? "text-emerald-400" : "text-indigo-400"}>🛰</span> GPS LOCATION
+        </div>
+        {sats === -2 ? (
+            <div className="text-xs font-bold text-red-500 mt-2">WIRING ERROR<br/>Check RX/TX pins</div>
+        ) : (
+            <>
+                <div className="text-sm font-mono font-bold tracking-tighter text-zinc-300">
+                    LAT: {lat === 0 ? "Wait..." : lat.toFixed(6)}
+                </div>
+                <div className="text-sm font-mono font-bold tracking-tighter text-zinc-300">
+                    LNG: {lng === 0 ? "Wait..." : lng.toFixed(6)}
+                </div>
+                <div className="text-xs text-zinc-500 font-bold mt-1">
+                    SATS: {sats === -1 ? "?" : sats} {sats === 0 ? "(NO FIX)" : ""}
+                </div>
+            </>
+        )}
       </div>
 
       {/* Internal Temperature */}

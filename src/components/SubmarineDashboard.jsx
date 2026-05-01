@@ -16,6 +16,9 @@ const SubmarineDashboard = () => {
   const [rpm, setRpm] = useState(1200);
   const [temp, setTemp] = useState(0.0);
   const [speedKnots, setSpeedKnots] = useState(0);
+  const [lat, setLat] = useState(0.0);
+  const [lng, setLng] = useState(0.0);
+  const [sats, setSats] = useState(-1);
 
   const [pitch, setPitch] = useState(0);
   const [roll, setRoll] = useState(0);
@@ -29,6 +32,8 @@ const SubmarineDashboard = () => {
   const [ballastActive, setBallastActive] = useState(false);
   const [driveMode, setDriveMode] = useState('stopped'); // 'forward', 'reverse', 'stopped'
   const [keyHint, setKeyHint] = useState('Use ↑ ↓ ← → and Spacebar');
+  const [lastCommand, setLastCommand] = useState('None');
+  const [lastReceived, setLastReceived] = useState('None');
 
   // Connectivity State
   const [ipAddress, setIpAddress] = useState('10.76.18.98'); // Change to your ESP32's IP
@@ -55,6 +60,9 @@ const SubmarineDashboard = () => {
       // Connect Logic
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate: 115200 });
+
+      // Native USB ESP32 boards require DTR to be asserted to receive serial data
+      await port.setSignals({ dataTerminalReady: true, requestToSend: true });
 
       // 1. Setup Writer (To send commands TO submarine)
       const textEncoder = new TextEncoderStream();
@@ -86,12 +94,31 @@ const SubmarineDashboard = () => {
           for (let line of lines) {
             line = line.trim();
             // Look for our temperature tags
-            if (line.startsWith("Water Temp:") || line.startsWith("TMP:")) {
-              const tempStr = line.includes("TMP:") ? line.split("TMP:")[1] : line.split("Water Temp:")[1];
+            if (line.startsWith("Water Temp:") || line.startsWith("TMP:") || line.startsWith("TEMP OF THE MAIN BOARD:")) {
+              let tempStr = "";
+              if (line.includes("TMP:")) tempStr = line.split("TMP:")[1];
+              else if (line.includes("Water Temp:")) tempStr = line.split("Water Temp:")[1];
+              else tempStr = line.split("TEMP OF THE MAIN BOARD:")[1].replace(" °C", "");
+
               const parsedTemp = parseFloat(tempStr);
               if (!isNaN(parsedTemp)) {
                 setTemp(parsedTemp); // Updates the React UI instantly
               }
+            } else if (line.startsWith("ACK:")) {
+              setLastReceived(line);
+            } else if (line.startsWith("GPS: ")) {
+              const gpsStr = line.replace("GPS: ", "").trim();
+              if (gpsStr === "WIRING_ERROR") {
+                 setSats(-2); // Special code for wiring error
+              } else {
+                 const parts = gpsStr.split(",");
+                 if(parts.length === 2) {
+                   setLat(parseFloat(parts[0]));
+                   setLng(parseFloat(parts[1]));
+                 }
+              }
+            } else if (line.startsWith("GPS_SAT: ")) {
+              setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
             }
           }
         }
@@ -103,15 +130,18 @@ const SubmarineDashboard = () => {
 
     } catch (err) {
       console.error('USB Connect error:', err);
+      alert('USB Connection Failed: ' + err.message);
     }
   };
 
   // --- CORE API TRANSMISSION WRAPPER ---
   // Dual-routes to USB Serial OR WiFi Fetch based on connection status
   const sendCommand = async (endpoint, serialPayload) => {
+    console.log(`[USB OUT] Target: ${endpoint} | Payload: ${serialPayload}`);
+    setLastCommand(serialPayload);
     try {
       if (isUsbConnected && serialWriterRef.current) {
-        await serialWriterRef.current.write(serialPayload + '\n');
+        await serialWriterRef.current.write(serialPayload + '\r\n');
       } else {
         await fetch(`http://${ipAddress}${endpoint}`, { mode: 'no-cors', cache: 'no-store' });
       }
@@ -222,10 +252,11 @@ const SubmarineDashboard = () => {
 
   // --- ACTUATOR TRANSMITTERS ---
 
-  // Drive Mode (Forward / Stop)
+  // Drive Mode (Forward / Stop / Reverse)
   useEffect(() => {
       let serialStr = 'STOP';
       if (driveMode === 'forward') serialStr = 'DIR:FWD';
+      else if (driveMode === 'reverse') serialStr = 'DIR:REV';
       sendCommand(`/action?dir=${driveMode}`, serialStr);
   }, [driveMode]);
 
@@ -313,6 +344,9 @@ const SubmarineDashboard = () => {
             amps={amps}
             rpm={rpm}
             temp={temp}
+            lat={lat}
+            lng={lng}
+            sats={sats}
         />
 
         <MainCenterView
@@ -346,8 +380,10 @@ const SubmarineDashboard = () => {
       </div>
 
       {/* Keyboard Hint Overlay */}
-      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex gap-2 p-3 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-sm text-cyan-400 font-mono rounded-lg z-50 shadow-xl opacity-80 pointer-events-none">
-          {keyHint}
+      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-sm text-cyan-400 font-mono rounded-lg z-50 shadow-xl opacity-80 pointer-events-none text-center lg:text-left">
+          <span>{keyHint}</span>
+          <span className="text-xs text-zinc-400">USB SENT: {lastCommand}</span>
+          <span className="text-xs text-green-400">USB RECV: {lastReceived}</span>
       </div>
 
     </div>
