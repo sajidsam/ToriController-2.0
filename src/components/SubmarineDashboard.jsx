@@ -204,32 +204,32 @@ const SubmarineDashboard = () => {
             break;
         case 'a':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.max(Number(prev) - 15, -45));
+            setFrontFinAngle(prev => Math.max(Number(prev) - 5, -45));
             setKeyHint('Steering Left');
             break;
         case 'd':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.min(Number(prev) + 15, 45));
+            setFrontFinAngle(prev => Math.min(Number(prev) + 5, 45));
             setKeyHint('Steering Right');
             break;
         case 'arrowup':
             e.preventDefault();
-            setRearFinY(prev => Math.min(Number(prev) + 15, 45));
+            setRearFinY(prev => Math.min(Number(prev) + 5, 45));
             setKeyHint('Empennage Pitch Up');
             break;
         case 'arrowdown':
             e.preventDefault();
-            setRearFinY(prev => Math.max(Number(prev) - 15, -45));
+            setRearFinY(prev => Math.max(Number(prev) - 5, -45));
             setKeyHint('Empennage Pitch Down');
             break;
         case 'arrowleft':
             e.preventDefault();
-            setRearFinX(prev => Math.max(Number(prev) - 15, -45));
+            setRearFinX(prev => Math.max(Number(prev) - 5, -45));
             setKeyHint('Empennage Yaw Left');
             break;
         case 'arrowright':
             e.preventDefault();
-            setRearFinX(prev => Math.min(Number(prev) + 15, 45));
+            setRearFinX(prev => Math.min(Number(prev) + 5, 45));
             setKeyHint('Empennage Yaw Right');
             break;
         case ' ': // Spacebar
@@ -325,7 +325,7 @@ const SubmarineDashboard = () => {
   const diveDeep = () => setDepth(12);
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-[calc(100vh-40px)] w-full bg-zinc-950 font-sans text-zinc-100 lg:overflow-hidden overflow-y-auto relative">
+    <div className="flex flex-col flex-1 w-full lg:overflow-hidden overflow-y-auto relative bg-transparent">
 
       <TopNavBar
         signalStrength={signalStrength}
@@ -372,18 +372,18 @@ const SubmarineDashboard = () => {
       </div>
 
       {/* Dev Tools Overlay (for testing) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
-          <span className="px-2 py-1 text-zinc-500 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
+          <span className="px-2 py-1 text-cyan-200 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
           <button onClick={toggleLeak} className="bg-red-900 hover:bg-red-700 px-3 py-1 rounded text-white font-bold transition">Toggle Leak</button>
           <button onClick={spikeAmps} className="bg-amber-900 hover:bg-amber-700 px-3 py-1 rounded text-white font-bold transition">Spike Amps</button>
           <button onClick={diveDeep} className="bg-blue-900 hover:bg-blue-700 px-3 py-1 rounded text-white font-bold transition">Dive &gt; 10m</button>
       </div>
 
       {/* Keyboard Hint Overlay */}
-      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-sm text-cyan-400 font-mono rounded-lg z-50 shadow-xl opacity-80 pointer-events-none text-center lg:text-left">
+      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-sm text-cyan-100 font-mono rounded-lg z-50 shadow-xl opacity-90 pointer-events-none text-center lg:text-left">
           <span>{keyHint}</span>
-          <span className="text-xs text-zinc-400">USB SENT: {lastCommand}</span>
-          <span className="text-xs text-green-400">USB RECV: {lastReceived}</span>
+          <span className="text-xs text-cyan-300">USB SENT: {lastCommand}</span>
+          <span className="text-xs text-emerald-300">USB RECV: {lastReceived}</span>
       </div>
 
     </div>
