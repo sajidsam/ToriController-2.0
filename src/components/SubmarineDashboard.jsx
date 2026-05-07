@@ -190,13 +190,13 @@ const SubmarineDashboard = () => {
         case 'w':
             e.preventDefault();
             setDriveMode('forward');
-            setThrottleLimit(prev => Math.min(Number(prev) + 10, 100));
+            setThrottleLimit(prev => Math.min(Number(prev) + 2, 30));
             setKeyHint('Moving Forward (Speed Up)');
             break;
         case 's':
             e.preventDefault();
             setThrottleLimit(prev => {
-                const newLimit = Math.max(Number(prev) - 10, 0);
+                const newLimit = Math.max(Number(prev) - 2, 0);
                 if (newLimit === 0) setDriveMode('stopped');
                 return newLimit;
             });
@@ -204,12 +204,12 @@ const SubmarineDashboard = () => {
             break;
         case 'a':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.max(Number(prev) - 5, -45));
+            setFrontFinAngle(prev => Math.max(Number(prev) - 10, -30));
             setKeyHint('Steering Left');
             break;
         case 'd':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.min(Number(prev) + 5, 45));
+            setFrontFinAngle(prev => Math.min(Number(prev) + 10, 30));
             setKeyHint('Steering Right');
             break;
         case 'arrowup':
