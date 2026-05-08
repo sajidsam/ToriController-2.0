@@ -37,7 +37,7 @@ const SubmarineDashboard = () => {
 
   // Connectivity State
   const [ipAddress, setIpAddress] = useState('10.76.18.98'); // Change to your ESP32's IP
-  const [cameraUrl, setCameraUrl] = useState('http://10.76.18.88:8080/video'); // IP Webcam URL
+  const [cameraUrl, setCameraUrl] = useState('http://10.73.115.219:8080/video'); // IP Webcam URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
 
   // Refs for persistent connection state
@@ -205,11 +205,13 @@ const SubmarineDashboard = () => {
         case 'a':
             e.preventDefault();
             setFrontFinAngle(prev => Math.max(Number(prev) - 10, -30));
+            setRearFinX(prev=> Math.min(Number(prev) + 10, 30))
             setKeyHint('Steering Left');
             break;
         case 'd':
             e.preventDefault();
             setFrontFinAngle(prev => Math.min(Number(prev) + 10, 30));
+            setRearFinX(prev=> Math.max(Number(prev) - 10, -30))
             setKeyHint('Steering Right');
             break;
         case 'arrowup':

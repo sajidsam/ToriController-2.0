@@ -59,7 +59,7 @@ const TelemetryPanel = ({ depth, amps, rpm, temp, tempError, lat, lng, sats }) =
       {/* GPS Location */}
       <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors ${sats === -2 ? 'bg-white text-black border-white animate-pulse' : 'bg-white/5 border-white/10 text-white'}`}>
         <div className="flex items-center gap-2 text-sm font-semibold mb-1 opacity-70">
-            <span>🛰</span> GPS LOCATION
+            GPS LOCATION
         </div>
         {sats === -2 ? (
             <div className="text-xs font-bold mt-2 uppercase">WIRING ERROR<br/>Check RX/TX pins</div>
