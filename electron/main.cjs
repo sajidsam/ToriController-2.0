@@ -27,13 +27,34 @@ function createWindow() {
   // Allow Web Serial API permission without blocking
   win.webContents.session.on('select-serial-port', (event, portList, webContents, callback) => {
     event.preventDefault();
+    console.log("AVAILABLE SERIAL PORTS:", portList);
+    
     if (portList && portList.length > 0) {
-      // For simplicity, auto-select the first available connected MCU (usually CP210x or CH340)
-      const selectedPort = portList.find(port => 
-          (port.vendorId === '10c4' || port.vendorId === '1a86' || port.vendorId === '0403' || port.vendorId === '303a')
-      ) || portList[0];
+      // First try to match common MCU vendor IDs
+      let selectedPort = portList.find(port => 
+          (port.vendorId && (
+            port.vendorId.toLowerCase() === '10c4' || 
+            port.vendorId.toLowerCase() === '1a86' || 
+            port.vendorId.toLowerCase() === '0403' || 
+            port.vendorId.toLowerCase() === '303a' ||
+            port.vendorId.toLowerCase() === '10c4'
+          ))
+      );
+      
+      // If no vendor ID matches, prioritize ports with 'usb' in the name (avoids Bluetooth ports on Mac)
+      if (!selectedPort) {
+        selectedPort = portList.find(port => port.portName && port.portName.toLowerCase().includes('usb'));
+      }
+      
+      // Fallback to the first port if nothing else matches
+      if (!selectedPort) {
+        selectedPort = portList[0];
+      }
+      
+      console.log("AUTO-SELECTED PORT:", selectedPort.portName, "VendorID:", selectedPort.vendorId);
       callback(selectedPort.portId);
     } else {
+      console.log("No serial ports found!");
       callback(''); // Cancel if no ports
     }
   });

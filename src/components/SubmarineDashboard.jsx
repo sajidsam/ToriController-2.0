@@ -16,6 +16,9 @@ const SubmarineDashboard = () => {
   const [rpm, setRpm] = useState(1200);
   const [temp, setTemp] = useState(0.0);
   const [speedKnots, setSpeedKnots] = useState(0);
+  const [lat, setLat] = useState(0.0);
+  const [lng, setLng] = useState(0.0);
+  const [sats, setSats] = useState(-1);
 
   const [pitch, setPitch] = useState(0);
   const [roll, setRoll] = useState(0);
@@ -29,10 +32,12 @@ const SubmarineDashboard = () => {
   const [ballastActive, setBallastActive] = useState(false);
   const [driveMode, setDriveMode] = useState('stopped'); // 'forward', 'reverse', 'stopped'
   const [keyHint, setKeyHint] = useState('Use ↑ ↓ ← → and Spacebar');
+  const [lastCommand, setLastCommand] = useState('None');
+  const [lastReceived, setLastReceived] = useState('None');
 
   // Connectivity State
   const [ipAddress, setIpAddress] = useState('10.76.18.98'); // Change to your ESP32's IP
-  const [cameraUrl, setCameraUrl] = useState('http://10.76.18.88:8080/video'); // IP Webcam URL
+  const [cameraUrl, setCameraUrl] = useState('http://10.73.115.219:8080/video'); // IP Webcam URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
 
   // Refs for persistent connection state
@@ -55,6 +60,9 @@ const SubmarineDashboard = () => {
       // Connect Logic
       const port = await navigator.serial.requestPort();
       await port.open({ baudRate: 115200 });
+
+      // Native USB ESP32 boards require DTR to be asserted to receive serial data
+      await port.setSignals({ dataTerminalReady: true, requestToSend: true });
 
       // 1. Setup Writer (To send commands TO submarine)
       const textEncoder = new TextEncoderStream();
@@ -86,12 +94,31 @@ const SubmarineDashboard = () => {
           for (let line of lines) {
             line = line.trim();
             // Look for our temperature tags
-            if (line.startsWith("Water Temp:") || line.startsWith("TMP:")) {
-              const tempStr = line.includes("TMP:") ? line.split("TMP:")[1] : line.split("Water Temp:")[1];
+            if (line.startsWith("Water Temp:") || line.startsWith("TMP:") || line.startsWith("TEMP OF THE MAIN BOARD:")) {
+              let tempStr = "";
+              if (line.includes("TMP:")) tempStr = line.split("TMP:")[1];
+              else if (line.includes("Water Temp:")) tempStr = line.split("Water Temp:")[1];
+              else tempStr = line.split("TEMP OF THE MAIN BOARD:")[1].replace(" °C", "");
+
               const parsedTemp = parseFloat(tempStr);
               if (!isNaN(parsedTemp)) {
                 setTemp(parsedTemp); // Updates the React UI instantly
               }
+            } else if (line.startsWith("ACK:")) {
+              setLastReceived(line);
+            } else if (line.startsWith("GPS: ")) {
+              const gpsStr = line.replace("GPS: ", "").trim();
+              if (gpsStr === "WIRING_ERROR") {
+                 setSats(-2); // Special code for wiring error
+              } else {
+                 const parts = gpsStr.split(",");
+                 if(parts.length === 2) {
+                   setLat(parseFloat(parts[0]));
+                   setLng(parseFloat(parts[1]));
+                 }
+              }
+            } else if (line.startsWith("GPS_SAT: ")) {
+              setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
             }
           }
         }
@@ -103,15 +130,18 @@ const SubmarineDashboard = () => {
 
     } catch (err) {
       console.error('USB Connect error:', err);
+      alert('USB Connection Failed: ' + err.message);
     }
   };
 
   // --- CORE API TRANSMISSION WRAPPER ---
   // Dual-routes to USB Serial OR WiFi Fetch based on connection status
   const sendCommand = async (endpoint, serialPayload) => {
+    console.log(`[USB OUT] Target: ${endpoint} | Payload: ${serialPayload}`);
+    setLastCommand(serialPayload);
     try {
       if (isUsbConnected && serialWriterRef.current) {
-        await serialWriterRef.current.write(serialPayload + '\n');
+        await serialWriterRef.current.write(serialPayload + '\r\n');
       } else {
         await fetch(`http://${ipAddress}${endpoint}`, { mode: 'no-cors', cache: 'no-store' });
       }
@@ -160,13 +190,13 @@ const SubmarineDashboard = () => {
         case 'w':
             e.preventDefault();
             setDriveMode('forward');
-            setThrottleLimit(prev => Math.min(Number(prev) + 10, 100));
+            setThrottleLimit(prev => Math.min(Number(prev) + 2, 50));
             setKeyHint('Moving Forward (Speed Up)');
             break;
         case 's':
             e.preventDefault();
             setThrottleLimit(prev => {
-                const newLimit = Math.max(Number(prev) - 10, 0);
+                const newLimit = Math.max(Number(prev) - 2, 0);
                 if (newLimit === 0) setDriveMode('stopped');
                 return newLimit;
             });
@@ -174,32 +204,34 @@ const SubmarineDashboard = () => {
             break;
         case 'a':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.max(Number(prev) - 15, -45));
+            setFrontFinAngle(prev => Math.max(Number(prev) - 10, -30));
+            setRearFinX(prev=> Math.min(Number(prev) + 10, 30))
             setKeyHint('Steering Left');
             break;
         case 'd':
             e.preventDefault();
-            setFrontFinAngle(prev => Math.min(Number(prev) + 15, 45));
+            setFrontFinAngle(prev => Math.min(Number(prev) + 10, 30));
+            setRearFinX(prev=> Math.max(Number(prev) - 10, -30))
             setKeyHint('Steering Right');
             break;
         case 'arrowup':
             e.preventDefault();
-            setRearFinY(prev => Math.min(Number(prev) + 15, 45));
+            setRearFinY(prev => Math.min(Number(prev) + 5, 45));
             setKeyHint('Empennage Pitch Up');
             break;
         case 'arrowdown':
             e.preventDefault();
-            setRearFinY(prev => Math.max(Number(prev) - 15, -45));
+            setRearFinY(prev => Math.max(Number(prev) - 5, -45));
             setKeyHint('Empennage Pitch Down');
             break;
         case 'arrowleft':
             e.preventDefault();
-            setRearFinX(prev => Math.max(Number(prev) - 15, -45));
+            setRearFinX(prev => Math.max(Number(prev) - 5, -45));
             setKeyHint('Empennage Yaw Left');
             break;
         case 'arrowright':
             e.preventDefault();
-            setRearFinX(prev => Math.min(Number(prev) + 15, 45));
+            setRearFinX(prev => Math.min(Number(prev) + 5, 45));
             setKeyHint('Empennage Yaw Right');
             break;
         case ' ': // Spacebar
@@ -222,10 +254,11 @@ const SubmarineDashboard = () => {
 
   // --- ACTUATOR TRANSMITTERS ---
 
-  // Drive Mode (Forward / Stop)
+  // Drive Mode (Forward / Stop / Reverse)
   useEffect(() => {
       let serialStr = 'STOP';
       if (driveMode === 'forward') serialStr = 'DIR:FWD';
+      else if (driveMode === 'reverse') serialStr = 'DIR:REV';
       sendCommand(`/action?dir=${driveMode}`, serialStr);
   }, [driveMode]);
 
@@ -294,7 +327,7 @@ const SubmarineDashboard = () => {
   const diveDeep = () => setDepth(12);
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-[calc(100vh-40px)] w-full bg-zinc-950 font-sans text-zinc-100 lg:overflow-hidden overflow-y-auto relative">
+    <div className="flex flex-col flex-1 w-full lg:overflow-hidden overflow-y-auto relative bg-transparent">
 
       <TopNavBar
         signalStrength={signalStrength}
@@ -313,6 +346,9 @@ const SubmarineDashboard = () => {
             amps={amps}
             rpm={rpm}
             temp={temp}
+            lat={lat}
+            lng={lng}
+            sats={sats}
         />
 
         <MainCenterView
@@ -338,16 +374,18 @@ const SubmarineDashboard = () => {
       </div>
 
       {/* Dev Tools Overlay (for testing) */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
-          <span className="px-2 py-1 text-zinc-500 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
+          <span className="px-2 py-1 text-cyan-200 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
           <button onClick={toggleLeak} className="bg-red-900 hover:bg-red-700 px-3 py-1 rounded text-white font-bold transition">Toggle Leak</button>
           <button onClick={spikeAmps} className="bg-amber-900 hover:bg-amber-700 px-3 py-1 rounded text-white font-bold transition">Spike Amps</button>
           <button onClick={diveDeep} className="bg-blue-900 hover:bg-blue-700 px-3 py-1 rounded text-white font-bold transition">Dive &gt; 10m</button>
       </div>
 
       {/* Keyboard Hint Overlay */}
-      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex gap-2 p-3 bg-zinc-900/80 backdrop-blur border border-zinc-700 text-sm text-cyan-400 font-mono rounded-lg z-50 shadow-xl opacity-80 pointer-events-none">
-          {keyHint}
+      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-sm text-cyan-100 font-mono rounded-lg z-50 shadow-xl opacity-90 pointer-events-none text-center lg:text-left">
+          <span>{keyHint}</span>
+          <span className="text-xs text-cyan-300">USB SENT: {lastCommand}</span>
+          <span className="text-xs text-emerald-300">USB RECV: {lastReceived}</span>
       </div>
 
     </div>
