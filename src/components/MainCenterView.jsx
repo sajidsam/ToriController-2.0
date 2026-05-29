@@ -147,13 +147,17 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-transparent p-2 md:p-4 relative overflow-hidden h-full max-h-screen gap-2 md:gap-4">
 
-        {/* Camera Feed and Radar Container */}
+        {/* Layout Container */}
         <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full max-w-full 2xl:max-w-7xl justify-center items-stretch flex-1 min-h-0">
-            {/* Camera Feed */}
-            <div
-                className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0"
-                style={{ perspective: '1000px' }}
-            >
+            
+            {/* Left Column: Camera + Attitude Overlays */}
+            <div className="flex flex-col gap-2 md:gap-4 flex-1 min-h-0 min-w-0">
+                
+                {/* Camera Feed */}
+                <div
+                    className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0"
+                    style={{ perspective: '1000px' }}
+                >
             <div className="absolute top-4 left-4 flex gap-2 z-40">
                 <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
                 <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
@@ -205,21 +209,10 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
             </div>
             </div>
 
-            {/* Navigation Radar */}
-            <RadarNavigation
-              heading={heading}
-              speedKnots={speedKnots}
-              depth={depth}
-              amps={amps}
-              pitch={pitch}
-              roll={roll}
-            />
-        </div>
+            {/* Attitude and Compass Overlay underneath camera */}
+            <div className="relative z-10 flex flex-wrap gap-2 lg:gap-4 w-full justify-center shrink-0">
 
-        {/* Attitude and Compass Overlay underneath camera */}
-        <div className="relative z-10 flex flex-wrap gap-2 lg:gap-4 w-full max-w-full 2xl:max-w-7xl justify-center shrink-0">
-
-            {/* Artificial Horizon (Textual & Basic Visual for now) */}
+                {/* Artificial Horizon (Textual & Basic Visual for now) */}
             <div className="bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-xl w-[280px] shrink-0 flex items-center justify-between gap-4 shadow-xl">
                 <div className="flex flex-col gap-1 items-center justify-between bg-white/5 p-3 rounded-lg border border-white/10 flex-1">
                     <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Pitch</span>
@@ -287,6 +280,19 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     <span className={`${rearFinY === 0 ? 'text-white/50' : 'text-white font-bold'} w-10 text-right`}>{rearFinY > 0 ? '+' : ''}{rearFinY}°</span>
                 </div>
             </div>
+
+            </div>
+            </div>
+
+            {/* Navigation Radar (Right Column) */}
+            <RadarNavigation
+              heading={heading}
+              speedKnots={speedKnots}
+              depth={depth}
+              amps={amps}
+              pitch={pitch}
+              roll={roll}
+            />
 
         </div>
     </div>

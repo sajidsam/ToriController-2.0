@@ -6,11 +6,11 @@ const TargetInfoPanel = ({ selectedTarget, targets, mode }) => {
 
     if (!target || mode === 'SEARCH') {
       return (
-        <div className="flex flex-col gap-2 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg p-3 text-xs h-[200px] shrink-0">
+        <div className="flex flex-col gap-2 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg p-3 text-xs shrink-0">
           <div className="text-white/80 font-bold uppercase tracking-widest text-[10px]">
             <Target size={12} className="inline mr-1" /> Target Info
           </div>
-          <div className="flex-1 flex items-center justify-center text-white/50 font-mono text-[11px]">
+          <div className="flex-1 flex items-center justify-center text-white/50 font-mono text-[11px] py-4">
             SELECT TARGET ON RADAR
           </div>
         </div>

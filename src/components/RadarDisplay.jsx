@@ -45,8 +45,8 @@ const RadarDisplay = ({
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
     const centerX = width / 2;
     const centerY = height / 2;
     const maxRadius = Math.min(width, height) / 2 - 30;
@@ -115,12 +115,12 @@ const RadarDisplay = ({
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.textAlign = 'center';
-    ctx.fillText('N', centerX, centerY - maxRadius - 10);
-    ctx.fillText('S', centerX, centerY + maxRadius + 15);
+    ctx.fillText('N', centerX, centerY - maxRadius - 14);
+    ctx.fillText('S', centerX, centerY + maxRadius + 14);
     ctx.textAlign = 'right';
-    ctx.fillText('W', centerX - maxRadius - 10, centerY + 4);
+    ctx.fillText('W', centerX - maxRadius - 14, centerY + 4);
     ctx.textAlign = 'left';
-    ctx.fillText('E', centerX + maxRadius + 5, centerY + 4);
+    ctx.fillText('E', centerX + maxRadius + 14, centerY + 4);
 
     // Draw targets
     for (let target of targets) {
