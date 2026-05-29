@@ -2,8 +2,9 @@ import React, { memo, useEffect, useRef, useState } from 'react';
 import { CameraOff, Navigation, Crosshair, FastForward, Move3d } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import RadarNavigation from './AdvancedRadarNavigation';
 
-const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl }) => {
+const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl, depth = 0, amps = 0 }) => {
   // Generate cache buster exactly once per mount so the feed doesn't flicker/restart on every telemetry update
   const cacheBuster = React.useMemo(() => Date.now(), []);
 
@@ -144,12 +145,15 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
   }, [model]);
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-transparent p-4 relative overflow-hidden h-full gap-4">
+    <div className="flex-1 flex flex-col items-center justify-center bg-transparent p-2 md:p-4 relative overflow-hidden h-full max-h-screen gap-2 md:gap-4">
 
-        <div
-            className="relative z-10 w-full max-w-4xl aspect-video bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm"
-            style={{ perspective: '1000px' }}
-        >
+        {/* Camera Feed and Radar Container */}
+        <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full max-w-full 2xl:max-w-7xl justify-center items-stretch flex-1 min-h-0">
+            {/* Camera Feed */}
+            <div
+                className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0"
+                style={{ perspective: '1000px' }}
+            >
             <div className="absolute top-4 left-4 flex gap-2 z-40">
                 <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
                 <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
@@ -199,10 +203,21 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     })}
                 </div>
             </div>
+            </div>
+
+            {/* Navigation Radar */}
+            <RadarNavigation
+              heading={heading}
+              speedKnots={speedKnots}
+              depth={depth}
+              amps={amps}
+              pitch={pitch}
+              roll={roll}
+            />
         </div>
 
         {/* Attitude and Compass Overlay underneath camera */}
-        <div className="relative z-10 flex flex-wrap gap-4 lg:gap-8 w-full max-w-4xl justify-center mt-4">
+        <div className="relative z-10 flex flex-wrap gap-2 lg:gap-4 w-full max-w-full 2xl:max-w-7xl justify-center shrink-0">
 
             {/* Artificial Horizon (Textual & Basic Visual for now) */}
             <div className="bg-black/60 backdrop-blur-md border border-white/20 p-4 rounded-xl w-[280px] shrink-0 flex items-center justify-between gap-4 shadow-xl">

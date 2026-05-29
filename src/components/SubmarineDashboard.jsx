@@ -360,6 +360,8 @@ const SubmarineDashboard = () => {
             rearFinX={rearFinX}
             rearFinY={rearFinY}
             cameraUrl={cameraUrl}
+            depth={depth}
+            amps={amps}
         />
 
         <ControlPanel
