@@ -341,7 +341,7 @@ const SubmarineDashboard = () => {
 
       <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
 
-        <TelemetryPanel
+        {/* <TelemetryPanel
             depth={depth}
             amps={amps}
             rpm={rpm}
@@ -349,7 +349,7 @@ const SubmarineDashboard = () => {
             lat={lat}
             lng={lng}
             sats={sats}
-        />
+        /> */}
 
         <MainCenterView
             pitch={pitch}
