@@ -3,6 +3,7 @@ import { CameraOff, Navigation, Crosshair, FastForward, Move3d } from 'lucide-re
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import RadarNavigation from './AdvancedRadarNavigation';
+import PrimaryFlightDisplay from './PrimaryFlightDisplay'
 
 const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl, depth = 0, amps = 0 }) => {
 
@@ -211,6 +212,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                         </div>
                     </div>
 
+                   
                     {/* Attitude and Compass Overlay underneath camera */}
                     <div className="relative z-10 flex flex-wrap gap-2 lg:gap-4 w-full justify-center shrink-0">
 
