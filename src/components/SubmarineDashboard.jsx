@@ -112,11 +112,11 @@ const SubmarineDashboard = () => {
               if (gpsStr === "WIRING_ERROR") {
                  setSats(-2); // Special code for wiring error
               } else {
-                 const parts = gpsStr.split(",");
-                 if(parts.length === 2) {
-                   setLat(parseFloat(parts[0]));
-                   setLng(parseFloat(parts[1]));
-                 }
+                  const parts = gpsStr.split(",");
+                  if(parts.length === 2) {
+                    setLat(parseFloat(parts[0]));
+                    setLng(parseFloat(parts[1]));
+                  }
               }
             } else if (line.startsWith("GPS_SAT: ")) {
               setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
