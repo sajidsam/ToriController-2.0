@@ -418,6 +418,7 @@ const SubmarineDashboard = () => {
             cameraUrl={cameraUrl}
             depth={depth}
             amps={amps}
+            temp={temp}
         />
 
         <ControlPanel

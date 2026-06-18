@@ -5,7 +5,7 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import RadarNavigation from './AdvancedRadarNavigation';
 import PrimaryFlightDisplay from './PrimaryFlightDisplay'
 
-const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl, depth = 0, amps = 0 }) => {
+const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, frontFinAngle = 0, rearFinX = 0, rearFinY = 0, cameraUrl, depth = 0, amps = 0, temp = 0 }) => {
 
     const cacheBuster = React.useMemo(() => Date.now(), []);
 
@@ -158,7 +158,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-h-0">
                         {/* Primary Flight Display */}
                         <div className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0">
-                            <PrimaryFlightDisplay heading={heading} depth={depth} pitch={pitch} roll={roll} />
+                            <PrimaryFlightDisplay heading={heading} depth={depth} pitch={pitch} roll={roll} temp={temp} />
                         </div>
 
                         {/* Camera Feed */}

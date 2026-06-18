@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Compass, Waves, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
+import { Compass, Waves, ArrowUpRight, ArrowDownRight, Activity, Thermometer } from "lucide-react";
 
 function PrimaryFlightDisplay({
   heading: propHeading,
   depth: propDepth,
   pitch: propPitch,
   roll: propRoll,
+  temp: propTemp,
   hideControls = true
 }) {
   const isDemo = propHeading === undefined && propDepth === undefined;
@@ -14,11 +15,13 @@ function PrimaryFlightDisplay({
   const [demoDepth, setDemoDepth] = useState(2.6);
   const [demoPitch, setDemoPitch] = useState(0.0);
   const [demoRoll, setDemoRoll] = useState(0.0);
+  const [demoTemp, setDemoTemp] = useState(24.5);
 
   const heading = isDemo ? demoHeading : propHeading;
   const depth = isDemo ? demoDepth : propDepth;
   const pitch = isDemo ? demoPitch : (propPitch || 0.0);
   const roll = isDemo ? demoRoll : (propRoll || 0.0);
+  const temp = isDemo ? demoTemp : (propTemp || 0.0);
 
   // Calculate vertical speed (m/min)
   const lastDepthRef = useRef(depth);
@@ -50,6 +53,7 @@ function PrimaryFlightDisplay({
       setDemoPitch(() => Math.sin(Date.now() / 2500) * 12.0);
       setDemoRoll(() => Math.cos(Date.now() / 3000) * 15.0);
       setDemoDepth((d) => Math.max(0, d + Math.sin(Date.now() / 5000) * 0.02));
+      setDemoTemp((t) => Math.min(60, Math.max(15, t + (Math.random() - 0.5) * 0.04)));
     }, 100);
     return () => clearInterval(id);
   }, [isDemo]);
@@ -120,9 +124,16 @@ function PrimaryFlightDisplay({
     <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20">
       
       {/* Title */}
-      <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-cyan-800/30 pb-2 mb-2">
+      <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-cyan-800/30 pb-2 mb-2 gap-2 flex-wrap">
         <span className="flex items-center gap-1.5"><Activity size={12} className="animate-pulse" /> PFD DISPLAY</span>
-        <span className="text-cyan-500/70 font-mono">ROLL: {roll.toFixed(1)}° | PITCH: {pitch.toFixed(1)}°</span>
+        <span className="text-cyan-500/70 font-mono flex flex-wrap items-center gap-3">
+          <span>ROLL: {roll.toFixed(1)}°</span>
+          <span>PITCH: {pitch.toFixed(1)}°</span>
+          <span className="flex items-center gap-1">
+            <Thermometer size={10} className={temp > 50 ? "text-red-400 animate-bounce" : "text-cyan-400"} />
+            TEMP: <span className={temp > 50 ? "text-red-400 font-bold" : "text-cyan-400"}>{temp.toFixed(1)}°C</span>
+          </span>
+        </span>
       </div>
 
       {/* Main HUD Row */}
