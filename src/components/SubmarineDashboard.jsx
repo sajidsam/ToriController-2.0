@@ -23,6 +23,7 @@ const SubmarineDashboard = () => {
   const [pitch, setPitch] = useState(0);
   const [roll, setRoll] = useState(0);
   const [heading, setHeading] = useState(45);
+  const [accel, setAccel] = useState({ x: 0.0, y: 0.0, z: 1.0 });
 
   // Control Actuators State
   const [throttleLimit, setThrottleLimit] = useState(0);
@@ -119,6 +120,36 @@ const SubmarineDashboard = () => {
               }
             } else if (line.startsWith("GPS_SAT: ")) {
               setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
+            } else if (line.startsWith("IMU:")) {
+              const imuStr = line.replace("IMU:", "").trim();
+              const parts = imuStr.split(",");
+              if (parts.length === 3) {
+                const p = parseFloat(parts[0]);
+                const r = parseFloat(parts[1]);
+                const y = parseFloat(parts[2]);
+                if (!isNaN(p)) setPitch(p);
+                if (!isNaN(r)) setRoll(r);
+                if (!isNaN(y)) setHeading(y);
+              }
+            } else if (line.startsWith("MPU9250 - Pitch:")) {
+              const match = line.match(/MPU9250 - Pitch:\s*([\d\.-]+)°\s*\|\s*Roll:\s*([\d\.-]+)°\s*\|\s*Yaw:\s*([\d\.-]+)°(?:\s*\|\s*Accel\(g\):\s*([\d\.-]+),([\d\.-]+),([\d\.-]+))?/);
+              if (match) {
+                const p = parseFloat(match[1]);
+                const r = parseFloat(match[2]);
+                const y = parseFloat(match[3]);
+                if (!isNaN(p)) setPitch(p);
+                if (!isNaN(r)) setRoll(r);
+                if (!isNaN(y)) setHeading(y);
+
+                if (match[4] && match[5] && match[6]) {
+                  const ax = parseFloat(match[4]);
+                  const ay = parseFloat(match[5]);
+                  const az = parseFloat(match[6]);
+                  if (!isNaN(ax) && !isNaN(ay) && !isNaN(az)) {
+                    setAccel({ x: ax, y: ay, z: az });
+                  }
+                }
+              }
             }
           }
         }
@@ -153,29 +184,50 @@ const SubmarineDashboard = () => {
 
   // --- WIFI TELEMETRY & PING LOOP ---
   useEffect(() => {
+    let tickCount = 0;
     const pingInterval = setInterval(() => {
         if (isUsbConnected) return; // If on USB, the reader loop handles everything. Do not ping WiFi.
 
-        // 1. Ping the main route to check signal
-        fetch(`http://${ipAddress}/`, { mode: 'no-cors' })
-            .then(() => setSignalStrength(100))
-            .catch(() => setSignalStrength(0));
+        tickCount++;
 
-        // 2. Fetch Real Temperature Data (Notice NO 'no-cors' here, and added timeout)
-        fetch(`http://${ipAddress}/temp`, { signal: AbortSignal.timeout(1500) })
+        // 1. Fetch Real IMU Data (WiFi) every 1 second
+        fetch(`http://${ipAddress}/imu`, { signal: AbortSignal.timeout(800) })
             .then(res => {
                 if (!res.ok) throw new Error("Network response was not ok");
-                return res.text();
+                return res.json();
             })
             .then(data => {
-                const parsedTemp = parseFloat(data);
-                if (!isNaN(parsedTemp)) {
-                    setTemp(parsedTemp);
+                if (data) {
+                    if (typeof data.pitch === 'number' && !isNaN(data.pitch)) setPitch(data.pitch);
+                    if (typeof data.roll === 'number' && !isNaN(data.roll)) setRoll(data.roll);
+                    if (typeof data.yaw === 'number' && !isNaN(data.yaw)) setHeading(data.yaw);
                 }
             })
-            .catch(err => console.warn("Temp Fetch Error (WiFi):", err.message));
+            .catch(err => console.warn("IMU Fetch Error (WiFi):", err.message));
 
-    }, 2000);
+        // 2. Ping and Temp every 2 seconds
+        if (tickCount % 2 === 0) {
+            // Ping the main route to check signal
+            fetch(`http://${ipAddress}/`, { mode: 'no-cors' })
+                .then(() => setSignalStrength(100))
+                .catch(() => setSignalStrength(0));
+
+            // Fetch Real Temperature Data
+            fetch(`http://${ipAddress}/temp`, { signal: AbortSignal.timeout(1500) })
+                .then(res => {
+                    if (!res.ok) throw new Error("Network response was not ok");
+                    return res.text();
+                })
+                .then(data => {
+                    const parsedTemp = parseFloat(data);
+                    if (!isNaN(parsedTemp)) {
+                        setTemp(parsedTemp);
+                    }
+                })
+                .catch(err => console.warn("Temp Fetch Error (WiFi):", err.message));
+        }
+
+    }, 1000);
     return () => clearInterval(pingInterval);
   }, [isUsbConnected, ipAddress]);
 
@@ -349,6 +401,10 @@ const SubmarineDashboard = () => {
             lat={lat}
             lng={lng}
             sats={sats}
+            pitch={pitch}
+            roll={roll}
+            heading={heading}
+            accel={accel}
         />
 
         <MainCenterView
