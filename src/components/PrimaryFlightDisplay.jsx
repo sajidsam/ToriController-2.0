@@ -12,6 +12,8 @@ const APEX_Y = 12;
 function SonarDisplay({
   heading: propHeading,
   depth: propDepth,
+  pitch: propPitch,
+  roll: propRoll,
   hideControls = true
 }) {
   const canvasRef = useRef(null);
@@ -21,9 +23,13 @@ function SonarDisplay({
   const [demoHeading, setDemoHeading] = useState(41);
   const [demoDepth, setDemoDepth] = useState(2.6);
   const [demoVertSpeed, setDemoVertSpeed] = useState(0.0);
+  const [demoPitch, setDemoPitch] = useState(0.0);
+  const [demoRoll, setDemoRoll] = useState(0.0);
 
   const heading = isDemo ? demoHeading : propHeading;
   const depth = isDemo ? demoDepth : propDepth;
+  const pitch = isDemo ? demoPitch : (propPitch || 0.0);
+  const roll = isDemo ? demoRoll : (propRoll || 0.0);
 
   const lastDepthRef = useRef(depth);
   const lastTimeRef = useRef(Date.now());
@@ -56,154 +62,103 @@ function SonarDisplay({
   function draw(ctx) {
     ctx.clearRect(0, 0, W, H);
 
-    // ── Background ──────────────────────────────────────────────
-    // Sky/water area (dark blue gradient)
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
+    // ── EARTH FRAME (ROTATED & PITCHED) ─────────────────────────
+    ctx.save();
+    // Clip to center display area (between the tapes and above the compass)
+    ctx.beginPath();
+    ctx.rect(120, 0, W - 240, H - 32);
+    ctx.clip();
+
+    // Perform translation and rotation
+    const rollRad = (roll * Math.PI) / 180;
+    const pitchOffset = pitch * 4; // 4 pixels per degree of pitch
+    ctx.translate(W / 2, HORIZON_Y);
+    ctx.rotate(-rollRad);
+    ctx.translate(0, pitchOffset);
+
+    // 1. Sky/water background
+    const ext = 500; // Extend far enough to cover corners when rotated
+    const skyGrad = ctx.createLinearGradient(0, -ext, 0, 0);
     skyGrad.addColorStop(0, "#0a1628");
     skyGrad.addColorStop(0.5, "#0d2a5e");
     skyGrad.addColorStop(1, "#1145a0");
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, W, HORIZON_Y);
+    ctx.fillRect(-ext, -ext, ext * 2, ext);
 
-    // Bottom/sediment area
-    const sedGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, H - 32);
+    // 2. Sediment background
+    const sedGrad = ctx.createLinearGradient(0, 0, 0, ext);
     sedGrad.addColorStop(0, "#2a1a08");
     sedGrad.addColorStop(1, "#1a0f04");
     ctx.fillStyle = sedGrad;
-    ctx.fillRect(0, HORIZON_Y, W, H - 32 - HORIZON_Y);
+    ctx.fillRect(-ext, 0, ext * 2, ext);
 
-    // Bottom bar background
-    ctx.fillStyle = "#0a0e18";
-    ctx.fillRect(0, H - 32, W, 32);
-
-    // ── Sonar Cone Glow ──────────────────────────────────────────
-    // Bright central glow around apex
-    const coneGlow = ctx.createRadialGradient(APEX_X, APEX_Y + 20, 10, APEX_X, APEX_Y + 60, 160);
-    coneGlow.addColorStop(0, "rgba(180,220,255,0.35)");
-    coneGlow.addColorStop(0.4, "rgba(80,160,255,0.12)");
-    coneGlow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = coneGlow;
-    ctx.fillRect(0, 0, W, HORIZON_Y);
-
-    // ── Sonar Cone Tick Marks ────────────────────────────────────
-    // Radiating lines from apex (like clock hands, upper half)
-    ctx.save();
-    ctx.strokeStyle = "rgba(200,230,255,0.75)";
-    ctx.lineWidth = 1.2;
-
-    // angles from -90° (pointing down) spreading outward
-    // We draw ticks at specific angles, centered on downward
-    const tickAngles = [-70, -55, -40, -25, -10, 0, 10, 25, 40, 55, 70]; // degrees from vertical
-    const shortLen = 22;
-    const longLen = 38;
-
-    tickAngles.forEach((deg, i) => {
-      const rad = (deg * Math.PI) / 180;
-      const isCenter = deg === 0;
-      const isMajor = Math.abs(deg) % 25 === 0 || isCenter;
-      const len = isCenter ? longLen + 10 : isMajor ? longLen : shortLen;
-
-      // start from apex going outward
-      const startDist = 8;
-      const x1 = APEX_X + Math.sin(rad) * startDist;
-      const y1 = APEX_Y + Math.cos(rad) * startDist;
-      const x2 = APEX_X + Math.sin(rad) * (startDist + len);
-      const y2 = APEX_Y + Math.cos(rad) * (startDist + len);
-
-      ctx.lineWidth = isCenter ? 2 : 1.2;
-      ctx.strokeStyle = isCenter
-        ? "rgba(255,255,255,0.9)"
-        : "rgba(180,215,255,0.65)";
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    // ── Horizontal Depth Scale Lines (water column) ──────────────
-    // Lines at 10m and 20m with labels on both sides
+    // 3. Horizontal Depth Scale Lines (water column)
     const depthScaleWater = [
-      { label: "20", y: HORIZON_Y * 0.25 },
-      { label: "10", y: HORIZON_Y * 0.6 },
+      { label: "20", y: -202.5 },
+      { label: "10", y: -108 },
     ];
-
     ctx.font = "bold 13px 'Courier New', monospace";
     ctx.fillStyle = "rgba(180,210,255,0.85)";
     ctx.textAlign = "center";
-
     depthScaleWater.forEach(({ label, y }) => {
-      // Left line segment
       ctx.strokeStyle = "rgba(180,210,255,0.45)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(130, y);
-      ctx.lineTo(220, y);
+      ctx.moveTo(-164, y);
+      ctx.lineTo(-74, y);
       ctx.stroke();
-      // Right line segment
       ctx.beginPath();
-      ctx.moveTo(368, y);
-      ctx.lineTo(458, y);
+      ctx.moveTo(74, y);
+      ctx.lineTo(164, y);
       ctx.stroke();
-      // Left label
-      ctx.fillText(label, 105, y + 5);
-      // Right label
-      ctx.fillText(label, 483, y + 5);
+      ctx.fillText(label, -189, y + 5);
+      ctx.fillText(label, 189, y + 5);
     });
 
-    // ── Horizontal Depth Scale Lines (sediment) ──────────────────
-    const sedimentTop = HORIZON_Y + 10;
-    const sedimentBot = H - 38;
-    const sedimentH = sedimentBot - sedimentTop;
-
+    // 4. Horizontal Depth Scale Lines (sediment)
     const depthScaleSed = [
-      { label: "10", y: sedimentTop + sedimentH * 0.38 },
-      { label: "20", y: sedimentTop + sedimentH * 0.78 },
+      { label: "10", y: 48.76 },
+      { label: "20", y: 89.56 },
     ];
-
     depthScaleSed.forEach(({ label, y }) => {
       ctx.strokeStyle = "rgba(160,130,90,0.45)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(130, y);
-      ctx.lineTo(220, y);
+      ctx.moveTo(-164, y);
+      ctx.lineTo(-74, y);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(368, y);
-      ctx.lineTo(458, y);
+      ctx.moveTo(74, y);
+      ctx.lineTo(164, y);
       ctx.stroke();
       ctx.fillStyle = "rgba(180,155,110,0.85)";
       ctx.font = "bold 13px 'Courier New', monospace";
-      ctx.fillText(label, 105, y + 5);
-      ctx.fillText(label, 483, y + 5);
+      ctx.fillText(label, -189, y + 5);
+      ctx.fillText(label, 189, y + 5);
     });
 
-    // ── Bottom Contour Wave ──────────────────────────────────────
-    // Yellow wavy bottom line with subtle undulation
+    // 5. Bottom Contour Wave
     const wavePoints = [];
     const waveSegments = 120;
     for (let i = 0; i <= waveSegments; i++) {
-      const x = (i / waveSegments) * W;
-      // Small bump in the center, otherwise near-flat
-      const distFromCenter = Math.abs(x - W / 2) / (W / 2);
+      const rx = (i / waveSegments) * W - W / 2;
+      const distFromCenter = Math.abs(rx) / (W / 2);
       const bump = distFromCenter < 0.25 ? Math.sin((distFromCenter / 0.25) * Math.PI) * 10 : 0;
       const noise = Math.sin(i * 0.7) * 1.5 + Math.sin(i * 1.3) * 0.8;
-      wavePoints.push({ x, y: HORIZON_Y + bump + noise });
+      wavePoints.push({ x: rx, y: bump + noise });
     }
 
-    // Fill below the wave with sediment color gradient
     ctx.beginPath();
-    ctx.moveTo(0, HORIZON_Y + 20);
+    ctx.moveTo(-W / 2, 20);
     wavePoints.forEach((p) => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(W, HORIZON_Y + 20);
+    ctx.lineTo(W / 2, 20);
     ctx.closePath();
-    const waveFill = ctx.createLinearGradient(0, HORIZON_Y, 0, HORIZON_Y + 20);
+    const waveFill = ctx.createLinearGradient(0, 0, 0, 20);
     waveFill.addColorStop(0, "#3a2510");
     waveFill.addColorStop(1, "#2a1a08");
     ctx.fillStyle = waveFill;
     ctx.fill();
 
-    // Draw the yellow bottom line
     ctx.beginPath();
     ctx.moveTo(wavePoints[0].x, wavePoints[0].y);
     wavePoints.forEach((p) => ctx.lineTo(p.x, p.y));
@@ -211,23 +166,70 @@ function SonarDisplay({
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // ── Two Green Dots at Horizon Sides ──────────────────────────
+    // 6. Two Green Dots at Horizon Sides
     ctx.fillStyle = "#00ff44";
     ctx.shadowColor = "#00ff44";
     ctx.shadowBlur = 6;
     ctx.beginPath();
-    ctx.arc(72, HORIZON_Y + 2, 4, 0, Math.PI * 2);
+    ctx.arc(-222, 2, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(W - 100, HORIZON_Y + 2, 4, 0, Math.PI * 2);
+    ctx.arc(194, 2, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // ── TT Markers (right side at horizon) ───────────────────────
+    // 7. TT Markers
     ctx.fillStyle = "rgba(200,200,200,0.85)";
     ctx.font = "bold 11px 'Courier New', monospace";
     ctx.textAlign = "left";
-    ctx.fillText("TT", W - 97, HORIZON_Y + 6);
+    ctx.fillText("TT", 197, 6);
+
+    ctx.restore();
+
+    // ── SUBMARINE/SCREEN FRAME (UNROTATED) ──────────────────────
+    // Bottom bar background
+    ctx.fillStyle = "#0a0e18";
+    ctx.fillRect(0, H - 32, W, 32);
+
+    // Sonar Cone Glow
+    const coneGlow = ctx.createRadialGradient(APEX_X, APEX_Y + 20, 10, APEX_X, APEX_Y + 60, 160);
+    coneGlow.addColorStop(0, "rgba(180,220,255,0.35)");
+    coneGlow.addColorStop(0.4, "rgba(80,160,255,0.12)");
+    coneGlow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = coneGlow;
+    ctx.fillRect(120, 0, W - 240, HORIZON_Y);
+
+    // Sonar Cone Tick Marks
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(120, 0, W - 240, HORIZON_Y);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(200,230,255,0.75)";
+    ctx.lineWidth = 1.2;
+    const tickAngles = [-70, -55, -40, -25, -10, 0, 10, 25, 40, 55, 70];
+    const shortLen = 22;
+    const longLen = 38;
+    tickAngles.forEach((deg, i) => {
+      const rad = (deg * Math.PI) / 180;
+      const isCenter = deg === 0;
+      const isMajor = Math.abs(deg) % 25 === 0 || isCenter;
+      const len = isCenter ? longLen + 10 : isMajor ? longLen : shortLen;
+      const startDist = 8;
+      const x1 = APEX_X + Math.sin(rad) * startDist;
+      const y1 = APEX_Y + Math.cos(rad) * startDist;
+      const x2 = APEX_X + Math.sin(rad) * (startDist + len);
+      const y2 = APEX_Y + Math.cos(rad) * (startDist + len);
+      ctx.lineWidth = isCenter ? 2 : 1.2;
+      ctx.strokeStyle = isCenter ? "rgba(255,255,255,0.9)" : "rgba(180,215,255,0.65)";
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // ── Background ──────────────────────────────────────────────
+
 
     // ── Left Depth Bar (green vertical scale) ────────────────────
     drawDepthBar(ctx);
@@ -488,11 +490,13 @@ function SonarDisplay({
     ctx.fillText("►", W - 8, barY + barH / 2 + 5);
   }
 
-  // Simulate slight drift for demo
+  // Simulate slight drift/motion for demo
   useEffect(() => {
     if (!isDemo) return;
     const id = setInterval(() => {
       setDemoHeading((h) => (h + (Math.random() - 0.5) * 0.1 + 360) % 360);
+      setDemoPitch(() => Math.sin(Date.now() / 2500) * 8.0);
+      setDemoRoll(() => Math.cos(Date.now() / 3000) * 12.0);
     }, 100);
     return () => clearInterval(id);
   }, [isDemo]);
