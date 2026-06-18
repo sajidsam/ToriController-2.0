@@ -17,6 +17,20 @@ function PrimaryFlightDisplay({
   const [demoRoll, setDemoRoll] = useState(0.0);
   const [demoTemp, setDemoTemp] = useState(24.5);
 
+  const [bubbles, setBubbles] = useState([]);
+  useEffect(() => {
+    const initialBubbles = Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      size: Math.random() * 3.5 + 1.5,
+      speed: Math.random() * 4 + 3,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.4 + 0.15,
+      drift: (Math.random() - 0.5) * 30
+    }));
+    setBubbles(initialBubbles);
+  }, []);
+
   const heading = isDemo ? demoHeading : propHeading;
   const depth = isDemo ? demoDepth : propDepth;
   const pitch = isDemo ? demoPitch : (propPitch || 0.0);
@@ -122,6 +136,24 @@ function PrimaryFlightDisplay({
 
   return (
     <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20">
+      <style>{`
+        @keyframes floatUp {
+          0% {
+            transform: translateY(0) translateX(0);
+            opacity: 0;
+          }
+          15% {
+            opacity: var(--bubble-opacity);
+          }
+          85% {
+            opacity: var(--bubble-opacity);
+          }
+          100% {
+            transform: translateY(-200px) translateX(var(--bubble-drift));
+            opacity: 0;
+          }
+        }
+      `}</style>
       
       {/* Title */}
       <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-cyan-800/30 pb-2 mb-2 gap-2 flex-wrap">
@@ -234,6 +266,36 @@ function PrimaryFlightDisplay({
                 }} 
               />
             </svg>
+
+            {/* God Rays / Light Shafts */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-25 mix-blend-screen z-[2]">
+              <div className="absolute top-0 left-[20%] w-[12%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[-15deg] blur-[2px]" />
+              <div className="absolute top-0 left-[45%] w-[18%] h-[120%] bg-gradient-to-b from-cyan-300/40 via-cyan-400/10 to-transparent origin-top rotate-[-5deg] blur-[3px]" />
+              <div className="absolute top-0 left-[70%] w-[10%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[10deg] blur-[2px]" />
+            </div>
+
+            {/* Underwater Bubbles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[3]">
+              {bubbles.map((b) => (
+                <div
+                  key={b.id}
+                  className="absolute rounded-full bg-cyan-300/30 border border-white/10"
+                  style={{
+                    left: `${b.x}%`,
+                    bottom: `-10px`,
+                    width: `${b.size}px`,
+                    height: `${b.size}px`,
+                    animation: `floatUp ${b.speed}s linear infinite`,
+                    animationDelay: `${b.delay}s`,
+                    '--bubble-opacity': b.opacity,
+                    '--bubble-drift': `${b.drift}px`
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Subtle Water Ripple Grid Overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(6,182,212,0.06),_transparent_70%)] animate-pulse pointer-events-none z-[1]" />
           </div>
         </div>
 
