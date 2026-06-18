@@ -9,11 +9,42 @@ const HORIZON_Y = 270;
 const APEX_X = W / 2;
 const APEX_Y = 12;
 
-function SonarDisplay() {
+function SonarDisplay({
+  heading: propHeading,
+  depth: propDepth,
+  hideControls = true
+}) {
   const canvasRef = useRef(null);
-  const [heading, setHeading] = useState(41);
-  const [depth, setDepth] = useState(2.6);
-  const [vertSpeed, setVertSpeed] = useState(0.0);
+
+  const isDemo = propHeading === undefined && propDepth === undefined;
+
+  const [demoHeading, setDemoHeading] = useState(41);
+  const [demoDepth, setDemoDepth] = useState(2.6);
+  const [demoVertSpeed, setDemoVertSpeed] = useState(0.0);
+
+  const heading = isDemo ? demoHeading : propHeading;
+  const depth = isDemo ? demoDepth : propDepth;
+
+  const lastDepthRef = useRef(depth);
+  const lastTimeRef = useRef(Date.now());
+  const [calculatedVertSpeed, setCalculatedVertSpeed] = useState(0.0);
+
+  useEffect(() => {
+    if (isDemo) return;
+    const now = Date.now();
+    const dt = (now - lastTimeRef.current) / 1000 / 60; // minutes
+    if (dt > 0.005) { // at least 300ms
+      const dDepth = depth - lastDepthRef.current;
+      const calculatedSpeed = dDepth / dt;
+      if (Math.abs(calculatedSpeed) < 100) {
+        setCalculatedVertSpeed(prev => prev + (calculatedSpeed - prev) * 0.15);
+      }
+      lastDepthRef.current = depth;
+      lastTimeRef.current = now;
+    }
+  }, [depth, isDemo]);
+
+  const vertSpeed = isDemo ? demoVertSpeed : calculatedVertSpeed;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -459,11 +490,12 @@ function SonarDisplay() {
 
   // Simulate slight drift for demo
   useEffect(() => {
+    if (!isDemo) return;
     const id = setInterval(() => {
-      setHeading((h) => h); // static for now, can animate
+      setDemoHeading((h) => (h + (Math.random() - 0.5) * 0.1 + 360) % 360);
     }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [isDemo]);
 
   return (
     <div
@@ -472,8 +504,8 @@ function SonarDisplay() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "100vh",
-        background: "#000",
+        width: "100%",
+        height: "100%",
         fontFamily: "'Courier New', monospace",
       }}
     >
@@ -481,63 +513,81 @@ function SonarDisplay() {
         style={{
           position: "relative",
           border: "2px solid #1a2a4a",
-          borderRadius: 4,
+          borderRadius: 12,
           overflow: "hidden",
           boxShadow: "0 0 40px rgba(0,80,200,0.3)",
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#0a0e18",
         }}
       >
-        <canvas ref={canvasRef} width={W} height={H} style={{ display: "block" }} />
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            objectFit: "contain",
+          }}
+        />
       </div>
 
-      {/* Controls */}
-      <div
-        style={{
-          marginTop: 20,
-          display: "flex",
-          gap: 24,
-          color: "#aaccff",
-          fontSize: 13,
-        }}
-      >
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Heading (°)
-          <input
-            type="range"
-            min={0}
-            max={359}
-            value={heading}
-            onChange={(e) => setHeading(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{heading}°</span>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Depth (m)
-          <input
-            type="range"
-            min={0}
-            max={50}
-            step={0.1}
-            value={depth}
-            onChange={(e) => setDepth(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{depth.toFixed(1)} m</span>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Vert Speed (m/min)
-          <input
-            type="range"
-            min={-20}
-            max={20}
-            step={0.1}
-            value={vertSpeed}
-            onChange={(e) => setVertSpeed(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{vertSpeed.toFixed(1)} m/min</span>
-        </label>
-      </div>
+      {/* Controls - only shown in demo mode or when explicitly allowed */}
+      {!hideControls && isDemo && (
+        <div
+          style={{
+            marginTop: 20,
+            display: "flex",
+            gap: 24,
+            color: "#aaccff",
+            fontSize: 13,
+          }}
+        >
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            Heading (°)
+            <input
+              type="range"
+              min={0}
+              max={359}
+              value={demoHeading}
+              onChange={(e) => setDemoHeading(Number(e.target.value))}
+              style={{ accentColor: "#00aaff" }}
+            />
+            <span style={{ textAlign: "center" }}>{demoHeading.toFixed(0)}°</span>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            Depth (m)
+            <input
+              type="range"
+              min={0}
+              max={50}
+              step={0.1}
+              value={demoDepth}
+              onChange={(e) => setDemoDepth(Number(e.target.value))}
+              style={{ accentColor: "#00aaff" }}
+            />
+            <span style={{ textAlign: "center" }}>{demoDepth.toFixed(1)} m</span>
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            Vert Speed (m/min)
+            <input
+              type="range"
+              min={-20}
+              max={20}
+              step={0.1}
+              value={demoVertSpeed}
+              onChange={(e) => setDemoVertSpeed(Number(e.target.value))}
+              style={{ accentColor: "#00aaff" }}
+            />
+            <span style={{ textAlign: "center" }}>{demoVertSpeed.toFixed(1)} m/min</span>
+          </label>
+        </div>
+      )}
     </div>
   );
 }

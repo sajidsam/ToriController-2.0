@@ -154,60 +154,68 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                 {/* Left Column: Camera + Attitude Overlays */}
                 <div className="flex flex-col gap-2 md:gap-4 flex-1 min-h-0 min-w-0">
 
-                    {/* Camera Feed */}
-                    <div
-                        className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0"
-                        style={{ perspective: '1000px' }}
-                    >
-                        <div className="absolute top-4 left-4 flex gap-2 z-40">
-                            <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
-                            <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
-                            <span className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border ${aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : aiStatus === "SEARCHING" ? 'bg-white/10 text-white/50 border-white/20' : 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'}`}>
-                                AI: {aiStatus}
-                            </span>
+                    {/* Camera and PFD Row */}
+                    <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-h-0">
+                        {/* Primary Flight Display */}
+                        <div className="md:w-[280px] lg:w-[320px] shrink-0 bg-black/60 border border-white/20 rounded-xl p-2 shadow-2xl flex items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-[200px] relative overflow-hidden">
+                            <PrimaryFlightDisplay heading={heading} depth={depth} />
                         </div>
 
-                        <div className="text-white/50 flex flex-col items-center gap-2 absolute z-0 mt-32">
-                            <span className="text-xs font-mono tracking-widest font-bold opacity-50">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
-                        </div>
+                        {/* Camera Feed */}
+                        <div
+                            className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0"
+                            style={{ perspective: '1000px' }}
+                        >
+                            <div className="absolute top-4 left-4 flex gap-2 z-40">
+                                <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
+                                <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
+                                <span className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border ${aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : aiStatus === "SEARCHING" ? 'bg-white/10 text-white/50 border-white/20' : 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'}`}>
+                                    AI: {aiStatus}
+                                </span>
+                            </div>
 
-                        {/* Live Camera Feed */}
-                        <img
-                            ref={imgRef}
-                            crossOrigin="anonymous"
-                            src={cameraUrl || "http://10.73.115.219/"}
-                            alt=""
-                            onError={(e) => {
-                                e.target.style.display = "none";
-                            }}
-                            className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none text-transparent"
-                        />
+                            <div className="text-white/50 flex flex-col items-center gap-2 absolute z-0 mt-32">
+                                <span className="text-xs font-mono tracking-widest font-bold opacity-50">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
+                            </div>
 
-                        {/* Object Detection Overlay */}
-                        <canvas
-                            ref={canvasRef}
-                            className="absolute inset-0 w-full h-full z-20 pointer-events-none"
-                        />
+                            {/* Live Camera Feed */}
+                            <img
+                                ref={imgRef}
+                                crossOrigin="anonymous"
+                                src={cameraUrl || "http://10.73.115.219/"}
+                                alt=""
+                                onError={(e) => {
+                                    e.target.style.display = "none";
+                                }}
+                                className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none text-transparent"
+                            />
+
+                            {/* Object Detection Overlay */}
+                            <canvas
+                                ref={canvasRef}
+                                className="absolute inset-0 w-full h-full z-20 pointer-events-none"
+                            />
 
 
-                        {/* Center Crosshair Overlay */}
-                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-40 mix-blend-screen">
-                            {/* <Crosshair size={250} className="text-white/20" strokeWidth={0.5} /> */}
+                            {/* Center Crosshair Overlay */}
+                            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-40 mix-blend-screen">
+                                {/* <Crosshair size={250} className="text-white/20" strokeWidth={0.5} /> */}
 
 
-                            {/* Detected Objects List */}
-                            <div className="absolute top-[65%] flex flex-wrap justify-center gap-2 max-w-[80%]">
-                                {detectedObjects.map((obj, i) => {
-                                    const isHigh = obj.score > 0.75;
-                                    return (
-                                        <span key={i} className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider backdrop-blur-sm ${isHigh
-                                                ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-                                                : 'bg-green-500/20 text-green-400 border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
-                                            }`}>
-                                            TARGET: {obj.class}
-                                        </span>
-                                    );
-                                })}
+                                {/* Detected Objects List */}
+                                <div className="absolute top-[65%] flex flex-wrap justify-center gap-2 max-w-[80%]">
+                                    {detectedObjects.map((obj, i) => {
+                                        const isHigh = obj.score > 0.75;
+                                        return (
+                                            <span key={i} className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider backdrop-blur-sm ${isHigh
+                                                    ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+                                                    : 'bg-green-500/20 text-green-400 border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
+                                                }`}>
+                                                TARGET: {obj.class}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     </div>
