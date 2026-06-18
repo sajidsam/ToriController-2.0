@@ -157,7 +157,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     {/* Camera and PFD Row */}
                     <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-h-0">
                         {/* Primary Flight Display */}
-                        <div className="md:w-[280px] lg:w-[320px] shrink-0 bg-black/60 border border-white/20 rounded-xl p-2 shadow-2xl flex items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-[200px] relative overflow-hidden">
+                        <div className="relative z-10 flex-1 bg-black/60 border border-white/20 rounded-xl overflow-hidden shadow-2xl flex flex-col items-center justify-center ring-1 ring-white/10 backdrop-blur-sm min-h-0">
                             <PrimaryFlightDisplay heading={heading} depth={depth} />
                         </div>
 
