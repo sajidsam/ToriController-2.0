@@ -507,35 +507,20 @@ function SonarDisplay({
         width: "100%",
         height: "100%",
         fontFamily: "'Courier New', monospace",
+        position: "relative",
       }}
     >
-      <div
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
         style={{
-          position: "relative",
-          border: "2px solid #1a2a4a",
-          borderRadius: 12,
-          overflow: "hidden",
-          boxShadow: "0 0 40px rgba(0,80,200,0.3)",
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0a0e18",
+          display: "block",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          objectFit: "contain",
         }}
-      >
-        <canvas
-          ref={canvasRef}
-          width={W}
-          height={H}
-          style={{
-            display: "block",
-            maxWidth: "100%",
-            maxHeight: "100%",
-            objectFit: "contain",
-          }}
-        />
-      </div>
+      />
 
       {/* Controls - only shown in demo mode or when explicitly allowed */}
       {!hideControls && isDemo && (
