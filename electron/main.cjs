@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 
+// Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
+app.commandLine.appendSwitch('ignore-certificate-errors');
+
 let win;
 
 function createWindow() {
@@ -13,6 +16,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: false, // Enable cross-origin requests to local IP cameras and APIs
     },
   });
 

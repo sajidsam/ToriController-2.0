@@ -14,6 +14,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
     const [model, setModel] = useState(null);
     const [detectedObjects, setDetectedObjects] = useState([]);
     const [aiStatus, setAiStatus] = useState("LOADING");
+    const [isImageLoaded, setIsImageLoaded] = useState(false);
     const requestRef = useRef();
 
     useEffect(() => {
@@ -63,7 +64,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
         offCanvas.height = ch;
         const offCtx = offCanvas.getContext('2d');
 
-        const scale = Math.max(cw / nw, ch / nh);
+        const scale = Math.min(cw / nw, ch / nh);
         const rw = nw * scale;
         const rh = nh * scale;
         const ox = (cw - rw) / 2;
@@ -169,20 +170,42 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                         </span>
                     </div>
 
-                    <div className="text-white/50 flex flex-col items-center gap-2 absolute z-0 mt-32">
-                        <span className="text-xs font-mono tracking-widest font-bold opacity-50">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
-                    </div>
+                    {!isImageLoaded && (
+                        <div className="text-white/50 flex flex-col items-center gap-2 absolute z-0 mt-32 w-full text-center select-none pointer-events-none">
+                            <span className="text-xs font-mono tracking-widest font-bold opacity-50">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
+                        </div>
+                    )}
 
                     {/* Live Camera Feed */}
                     <img
                         ref={imgRef}
                         crossOrigin="anonymous"
-                        src={cameraUrl || "http://10.73.115.219/"}
+                        src={(() => {
+                            if (!cameraUrl) return "http://10.73.115.219/video";
+                            let trimmed = cameraUrl.trim();
+                            if (!/^https?:\/\//i.test(trimmed)) {
+                                trimmed = "http://" + trimmed;
+                            }
+                            try {
+                                const parsed = new URL(trimmed);
+                                if (parsed.pathname === "/" || parsed.pathname === "") {
+                                    parsed.pathname = "/video";
+                                }
+                                return parsed.toString();
+                            } catch (e) {
+                                return trimmed;
+                            }
+                        })()}
                         alt=""
+                        onLoad={(e) => {
+                            setIsImageLoaded(true);
+                            e.target.style.display = "block";
+                        }}
                         onError={(e) => {
+                            setIsImageLoaded(false);
                             e.target.style.display = "none";
                         }}
-                        className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none text-transparent"
+                        className="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none text-transparent"
                     />
 
                     {/* Object Detection Overlay */}
