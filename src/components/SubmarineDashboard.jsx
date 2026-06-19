@@ -391,7 +391,7 @@ const SubmarineDashboard = () => {
         isUsbConnected={isUsbConnected} connectUsb={connectUsb}
       />
 
-      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
 
         {/* <TelemetryPanel
             depth={depth}

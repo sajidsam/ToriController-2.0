@@ -38,7 +38,7 @@ const AdvancedRadarNavigation = ({
   }, [selectedTarget]);
 
   return (
-    <div className="flex flex-col gap-2 bg-gradient-to-b from-black/40 to-black/60 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 w-full md:w-[300px] lg:w-[360px] shrink-0 h-full max-h-full">
+    <div className="flex flex-col gap-2 bg-gradient-to-b from-black/40 to-black/60 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 w-full lg:w-[280px] xl:w-[340px] shrink-0 lg:h-full lg:max-h-full min-h-0">
       {/* Header */}
       <div className="px-3 py-2 bg-black/60 border-b border-white/10 flex items-center justify-between shrink-0">
         <div>
@@ -52,7 +52,7 @@ const AdvancedRadarNavigation = ({
       </div>
 
       {/* Main Radar Display */}
-      <div className="px-3 pt-3 w-full flex-1 min-h-[150px]">
+      <div className="px-3 pt-3 w-full flex-1 min-h-[120px] radar-display-container">
         <div className="w-full h-full rounded border border-white/20 overflow-hidden bg-black">
           <RadarDisplay
             range={range}
@@ -69,7 +69,7 @@ const AdvancedRadarNavigation = ({
       </div>
 
       {/* Controls & Info Panels */}
-      <div className="px-3 pb-3 flex flex-col gap-3 shrink-0">
+      <div className="px-3 pb-3 flex flex-col gap-2 shrink-0 radar-container">
         {/* Controls */}
         <RadarControls
           range={range}

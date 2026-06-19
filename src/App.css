@@ -1,0 +1,184 @@
+:root {
+  --throttle-height: 24rem; /* 384px */
+  --throttle-width: 7rem;  /* 112px */
+  --throttle-handle-offset: 1.5rem;
+  --horizon-ball-size: 11rem; /* 176px (w-44 h-44) */
+}
+
+/* Height based scaling */
+@media (max-height: 850px) {
+  :root {
+    --throttle-height: 15rem; /* 240px */
+    --throttle-width: 6rem;   /* 96px */
+    --throttle-handle-offset: 1.25rem;
+    --horizon-ball-size: 8.5rem; /* 136px (w-34 h-34) */
+  }
+  .pfd-container {
+    padding: 0.375rem !important; /* p-1.5 */
+  }
+  .control-panel-gap {
+    gap: 0.5rem !important; /* gap-2 */
+  }
+  .control-panel-padding {
+    padding: 0.5rem !important; /* p-2 */
+  }
+  .control-panel-card {
+    padding: 0.5rem !important; /* p-2 */
+    gap: 0.375rem !important;   /* gap-1.5 */
+  }
+  .control-panel-btn {
+    padding-top: 0.375rem !important; /* py-1.5 */
+    padding-bottom: 0.375rem !important;
+  }
+  .control-panel-throttle-wrapper {
+    padding-top: 0.25rem !important; /* py-1 */
+    padding-bottom: 0.25rem !important;
+  }
+  .throttle-handle {
+    width: 5.5rem !important; /* w-22 */
+    height: 2.25rem !important; /* h-9 */
+  }
+  .throttle-handle div {
+    width: 2.5rem !important;
+  }
+  .radar-display-container {
+    min-height: 110px !important;
+  }
+  .radar-container {
+    gap: 0.375rem !important;
+  }
+}
+
+@media (max-height: 780px) {
+  :root {
+    --throttle-height: 9.5rem; /* 152px */
+    --throttle-width: 4.5rem;  /* 72px */
+    --throttle-handle-offset: 0.75rem;
+    --horizon-ball-size: 6.5rem; /* 104px (w-26 h-26) */
+  }
+  .pfd-container {
+    padding: 0.25rem !important; /* p-1 */
+  }
+  .control-panel-gap {
+    gap: 0.25rem !important; /* gap-1 */
+  }
+  .control-panel-padding {
+    padding: 0.25rem !important; /* p-1 */
+  }
+  .control-panel-card {
+    padding: 0.375rem !important; /* p-1.5 */
+    gap: 0.25rem !important;      /* gap-1 */
+  }
+  .control-panel-btn {
+    padding-top: 0.25rem !important; /* py-1 */
+    padding-bottom: 0.25rem !important;
+    font-size: 0.75rem !important;   /* text-xs */
+  }
+  .control-panel-header {
+    margin-bottom: 0.25rem !important; /* mb-1 */
+    padding-bottom: 0.25rem !important; /* pb-1 */
+  }
+  .control-panel-throttle-wrapper {
+    padding-top: 0.125rem !important; /* py-0.5 */
+    padding-bottom: 0.125rem !important;
+  }
+  .control-panel-card-title {
+    margin-bottom: 0.25rem !important; /* mb-1 */
+    font-size: 0.75rem !important;
+  }
+  .control-panel-readout {
+    padding: 0.25rem !important; /* p-1 */
+    font-size: 0.7rem !important;
+  }
+  .control-panel-hint {
+    margin-top: 0.125rem !important;
+    padding-top: 0.125rem !important;
+    padding-bottom: 0.125rem !important;
+    font-size: 8px !important;
+  }
+  .throttle-handle {
+    width: 4rem !important; /* w-16 */
+    height: 1.5rem !important; /* h-6 */
+  }
+  .throttle-handle div {
+    display: none !important;
+  }
+  .radar-display-container {
+    min-height: 85px !important;
+  }
+  .radar-container {
+    gap: 0.2rem !important;
+  }
+}
+
+/* Custom classes matching the layout requirements */
+.control-panel-throttle {
+  height: var(--throttle-height) !important;
+  width: var(--throttle-width) !important;
+}
+
+.control-panel-throttle-input {
+  width: var(--throttle-height) !important;
+  height: var(--throttle-width) !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) rotate(-90deg) !important;
+}
+
+.pfd-horizon-ball {
+  width: var(--horizon-ball-size) !important;
+  height: var(--horizon-ball-size) !important;
+}
+
+/* CSS Grid for main center view */
+.main-center-grid {
+  display: grid;
+  gap: 0.5rem; /* gap-2 */
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "pfd"
+    "camera"
+    "indicators"
+    "radar";
+}
+
+@media (min-width: 640px) {
+  .main-center-grid {
+    gap: 1rem; /* gap-4 */
+  }
+}
+
+@media (min-width: 1024px) { /* lg breakpoint */
+  .main-center-grid {
+    grid-template-columns: 1fr 1fr 280px;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      "pfd camera radar"
+      "indicators indicators radar";
+  }
+}
+
+@media (min-width: 1280px) { /* xl breakpoint */
+  .main-center-grid {
+    grid-template-columns: 1fr 1fr 340px;
+  }
+}
+
+.grid-area-pfd {
+  grid-area: pfd;
+}
+
+.grid-area-camera {
+  grid-area: camera;
+}
+
+.grid-area-indicators {
+  grid-area: indicators;
+}
+
+.grid-area-radar {
+  grid-area: radar;
+}
