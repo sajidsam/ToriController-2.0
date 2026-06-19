@@ -1,7 +1,6 @@
-import React from 'react';
-import { Wifi, WifiOff, Battery, BatteryFull, BatteryMedium, BatteryLow, BatteryWarning, AlertTriangle, ShieldCheck, Usb, Globe, Camera } from 'lucide-react';
+import { Wifi, WifiOff, Battery, BatteryFull, BatteryMedium, BatteryLow, BatteryWarning, AlertTriangle, ShieldCheck, Usb, Globe, Camera, Compass } from 'lucide-react';
 
-const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddress, setIpAddress, cameraUrl, setCameraUrl, isUsbConnected, connectUsb }) => {
+const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddress, setIpAddress, cameraUrl, setCameraUrl, isUsbConnected, connectUsb, calibrateGyro }) => {
   return (
     <div className="flex justify-between items-center bg-black border-b border-white/20 p-1.5 sm:p-2 text-white select-none">
 
@@ -56,6 +55,16 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
                 <Usb size={14} />
                 <span className="hidden sm:inline">{isUsbConnected ? 'DISCONNECT' : 'CONNECT USB'}</span>
             </button>
+            {(isUsbConnected || signalStrength > 0) && (
+              <button
+                  onClick={calibrateGyro}
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-cyan-500/50 text-cyan-400 hover:bg-cyan-950/20"
+                  title="Calibrate Gyroscope"
+              >
+                  <Compass size={14} />
+                  <span className="hidden sm:inline">CALIBRATE</span>
+              </button>
+            )}
         </div>
       </div>
 
