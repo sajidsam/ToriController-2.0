@@ -250,15 +250,15 @@ const RadarDisplay = ({
     ctx.font = 'bold 11px monospace';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.textAlign = 'left';
-    ctx.fillText(`[${mode}]`, centerX - maxRadius + 10, centerY - maxRadius + 20);
+    ctx.fillText(`[${mode}]`, 12, 20);
 
     // Sonar power indicator
     ctx.fillStyle = amps > 15 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(`PWR: ${amps.toFixed(1)}A`, centerX - maxRadius + 10, centerY - maxRadius + 35);
+    ctx.fillText(`PWR: ${amps.toFixed(1)}A`, 12, 35);
 
     // Sea state indicator based on depth
     ctx.fillStyle = clutterFactor > 0.5 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText(`DEPTH: ${depth.toFixed(1)}m`, centerX - maxRadius + 10, centerY - maxRadius + 50);
+    ctx.fillText(`DEPTH: ${depth.toFixed(1)}m`, 12, 50);
   }, [range, gain, mode, heading, speedKnots, depth, amps, selectedTarget]);
 
   useEffect(() => {

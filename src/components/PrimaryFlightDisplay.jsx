@@ -1,545 +1,417 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Compass, Waves, ArrowUpRight, ArrowDownRight, Activity, Thermometer } from "lucide-react";
 
-const W = 588;
-const H = 420;
+function PrimaryFlightDisplay({
+  heading: propHeading,
+  depth: propDepth,
+  pitch: propPitch,
+  roll: propRoll,
+  temp: propTemp,
+  hideControls = true
+}) {
+  const isDemo = propHeading === undefined && propDepth === undefined;
 
-// Horizon Y position (water/bottom boundary)
-const HORIZON_Y = 270;
-// Sonar cone apex
-const APEX_X = W / 2;
-const APEX_Y = 12;
+  const [demoHeading, setDemoHeading] = useState(41);
+  const [demoDepth, setDemoDepth] = useState(2.6);
+  const [demoPitch, setDemoPitch] = useState(0.0);
+  const [demoRoll, setDemoRoll] = useState(0.0);
+  const [demoTemp, setDemoTemp] = useState(24.5);
 
-function SonarDisplay() {
-  const canvasRef = useRef(null);
-  const [heading, setHeading] = useState(41);
-  const [depth, setDepth] = useState(2.6);
-  const [vertSpeed, setVertSpeed] = useState(0.0);
-
+  const [bubbles, setBubbles] = useState([]);
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    draw(ctx);
-  });
-
-  function draw(ctx) {
-    ctx.clearRect(0, 0, W, H);
-
-    // ── Background ──────────────────────────────────────────────
-    // Sky/water area (dark blue gradient)
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
-    skyGrad.addColorStop(0, "#0a1628");
-    skyGrad.addColorStop(0.5, "#0d2a5e");
-    skyGrad.addColorStop(1, "#1145a0");
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, W, HORIZON_Y);
-
-    // Bottom/sediment area
-    const sedGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, H - 32);
-    sedGrad.addColorStop(0, "#2a1a08");
-    sedGrad.addColorStop(1, "#1a0f04");
-    ctx.fillStyle = sedGrad;
-    ctx.fillRect(0, HORIZON_Y, W, H - 32 - HORIZON_Y);
-
-    // Bottom bar background
-    ctx.fillStyle = "#0a0e18";
-    ctx.fillRect(0, H - 32, W, 32);
-
-    // ── Sonar Cone Glow ──────────────────────────────────────────
-    // Bright central glow around apex
-    const coneGlow = ctx.createRadialGradient(APEX_X, APEX_Y + 20, 10, APEX_X, APEX_Y + 60, 160);
-    coneGlow.addColorStop(0, "rgba(180,220,255,0.35)");
-    coneGlow.addColorStop(0.4, "rgba(80,160,255,0.12)");
-    coneGlow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = coneGlow;
-    ctx.fillRect(0, 0, W, HORIZON_Y);
-
-    // ── Sonar Cone Tick Marks ────────────────────────────────────
-    // Radiating lines from apex (like clock hands, upper half)
-    ctx.save();
-    ctx.strokeStyle = "rgba(200,230,255,0.75)";
-    ctx.lineWidth = 1.2;
-
-    // angles from -90° (pointing down) spreading outward
-    // We draw ticks at specific angles, centered on downward
-    const tickAngles = [-70, -55, -40, -25, -10, 0, 10, 25, 40, 55, 70]; // degrees from vertical
-    const shortLen = 22;
-    const longLen = 38;
-
-    tickAngles.forEach((deg, i) => {
-      const rad = (deg * Math.PI) / 180;
-      const isCenter = deg === 0;
-      const isMajor = Math.abs(deg) % 25 === 0 || isCenter;
-      const len = isCenter ? longLen + 10 : isMajor ? longLen : shortLen;
-
-      // start from apex going outward
-      const startDist = 8;
-      const x1 = APEX_X + Math.sin(rad) * startDist;
-      const y1 = APEX_Y + Math.cos(rad) * startDist;
-      const x2 = APEX_X + Math.sin(rad) * (startDist + len);
-      const y2 = APEX_Y + Math.cos(rad) * (startDist + len);
-
-      ctx.lineWidth = isCenter ? 2 : 1.2;
-      ctx.strokeStyle = isCenter
-        ? "rgba(255,255,255,0.9)"
-        : "rgba(180,215,255,0.65)";
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    });
-    ctx.restore();
-
-    // ── Horizontal Depth Scale Lines (water column) ──────────────
-    // Lines at 10m and 20m with labels on both sides
-    const depthScaleWater = [
-      { label: "20", y: HORIZON_Y * 0.25 },
-      { label: "10", y: HORIZON_Y * 0.6 },
-    ];
-
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(180,210,255,0.85)";
-    ctx.textAlign = "center";
-
-    depthScaleWater.forEach(({ label, y }) => {
-      // Left line segment
-      ctx.strokeStyle = "rgba(180,210,255,0.45)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(130, y);
-      ctx.lineTo(220, y);
-      ctx.stroke();
-      // Right line segment
-      ctx.beginPath();
-      ctx.moveTo(368, y);
-      ctx.lineTo(458, y);
-      ctx.stroke();
-      // Left label
-      ctx.fillText(label, 105, y + 5);
-      // Right label
-      ctx.fillText(label, 483, y + 5);
-    });
-
-    // ── Horizontal Depth Scale Lines (sediment) ──────────────────
-    const sedimentTop = HORIZON_Y + 10;
-    const sedimentBot = H - 38;
-    const sedimentH = sedimentBot - sedimentTop;
-
-    const depthScaleSed = [
-      { label: "10", y: sedimentTop + sedimentH * 0.38 },
-      { label: "20", y: sedimentTop + sedimentH * 0.78 },
-    ];
-
-    depthScaleSed.forEach(({ label, y }) => {
-      ctx.strokeStyle = "rgba(160,130,90,0.45)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(130, y);
-      ctx.lineTo(220, y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(368, y);
-      ctx.lineTo(458, y);
-      ctx.stroke();
-      ctx.fillStyle = "rgba(180,155,110,0.85)";
-      ctx.font = "bold 13px 'Courier New', monospace";
-      ctx.fillText(label, 105, y + 5);
-      ctx.fillText(label, 483, y + 5);
-    });
-
-    // ── Bottom Contour Wave ──────────────────────────────────────
-    // Yellow wavy bottom line with subtle undulation
-    const wavePoints = [];
-    const waveSegments = 120;
-    for (let i = 0; i <= waveSegments; i++) {
-      const x = (i / waveSegments) * W;
-      // Small bump in the center, otherwise near-flat
-      const distFromCenter = Math.abs(x - W / 2) / (W / 2);
-      const bump = distFromCenter < 0.25 ? Math.sin((distFromCenter / 0.25) * Math.PI) * 10 : 0;
-      const noise = Math.sin(i * 0.7) * 1.5 + Math.sin(i * 1.3) * 0.8;
-      wavePoints.push({ x, y: HORIZON_Y + bump + noise });
-    }
-
-    // Fill below the wave with sediment color gradient
-    ctx.beginPath();
-    ctx.moveTo(0, HORIZON_Y + 20);
-    wavePoints.forEach((p) => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(W, HORIZON_Y + 20);
-    ctx.closePath();
-    const waveFill = ctx.createLinearGradient(0, HORIZON_Y, 0, HORIZON_Y + 20);
-    waveFill.addColorStop(0, "#3a2510");
-    waveFill.addColorStop(1, "#2a1a08");
-    ctx.fillStyle = waveFill;
-    ctx.fill();
-
-    // Draw the yellow bottom line
-    ctx.beginPath();
-    ctx.moveTo(wavePoints[0].x, wavePoints[0].y);
-    wavePoints.forEach((p) => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = "#d4a800";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // ── Two Green Dots at Horizon Sides ──────────────────────────
-    ctx.fillStyle = "#00ff44";
-    ctx.shadowColor = "#00ff44";
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(72, HORIZON_Y + 2, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(W - 100, HORIZON_Y + 2, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // ── TT Markers (right side at horizon) ───────────────────────
-    ctx.fillStyle = "rgba(200,200,200,0.85)";
-    ctx.font = "bold 11px 'Courier New', monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("TT", W - 97, HORIZON_Y + 6);
-
-    // ── Left Depth Bar (green vertical scale) ────────────────────
-    drawDepthBar(ctx);
-
-    // ── Right Vert Speed Bar ──────────────────────────────────────
-    drawVertSpeedBar(ctx, vertSpeed);
-
-    // ── Depth Value Badge (left) ──────────────────────────────────
-    drawBadge(ctx, depth.toFixed(1), 14, 96, "#111", "#fff", true);
-
-    // ── Vert Speed Badge (right) ──────────────────────────────────
-    drawBadge(ctx, vertSpeed.toFixed(1), W - 68, 261, "#111", "#fff", false);
-
-    // ── Apex Triangle ────────────────────────────────────────────
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.moveTo(APEX_X, APEX_Y + 5);
-    ctx.lineTo(APEX_X - 10, APEX_Y - 8);
-    ctx.lineTo(APEX_X + 10, APEX_Y - 8);
-    ctx.closePath();
-    ctx.fill();
-
-    // ── Column Headers ────────────────────────────────────────────
-    ctx.fillStyle = "rgba(180,210,255,0.8)";
-    ctx.font = "11px 'Courier New', monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("DEPTH (m)", 6, 14);
-    ctx.textAlign = "right";
-    ctx.fillText("VERT SPEED", W - 4, 14);
-    ctx.fillText("(m/min)", W - 4, 26);
-
-    // ── Compass Strip ────────────────────────────────────────────
-    drawCompass(ctx, heading);
-  }
-
-  function drawDepthBar(ctx) {
-    // Green vertical bar on the left side
-    const barX = 44;
-    const barTop = 20;
-    const barBot = H - 38;
-    const barH = barBot - barTop;
-
-    // Scale marks: 0 at top, -50 at bottom
-    ctx.strokeStyle = "rgba(180,210,255,0.5)";
-    ctx.lineWidth = 1;
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(180,210,255,0.75)";
-    ctx.textAlign = "right";
-
-    const depthTicks = [0, 10, 20, 30, 40, 50];
-    depthTicks.forEach((d) => {
-      const y = barTop + (d / 50) * barH;
-      ctx.beginPath();
-      ctx.moveTo(barX - 5, y);
-      ctx.lineTo(barX + 5, y);
-      ctx.stroke();
-      ctx.fillText(`-${d === 0 ? "0" : d}`, barX - 7, y + 4);
-    });
-
-    // Minor ticks every 5m
-    for (let d = 5; d <= 45; d += 10) {
-      const y = barTop + (d / 50) * barH;
-      ctx.beginPath();
-      ctx.moveTo(barX - 3, y);
-      ctx.lineTo(barX + 3, y);
-      ctx.stroke();
-    }
-
-    // Green bar
-    ctx.strokeStyle = "#00cc44";
-    ctx.lineWidth = 3;
-    ctx.shadowColor = "#00ff44";
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.moveTo(barX + 8, barTop);
-    ctx.lineTo(barX + 8, barBot);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
-
-  function drawVertSpeedBar(ctx, speed) {
-    const barX = W - 44;
-    const barMid = (H - 38) / 2 + 20; // middle = 0 m/min
-    const barTop = 20;
-    const barBot = H - 38;
-    const halfH = (barBot - barTop) / 2;
-
-    ctx.strokeStyle = "rgba(180,210,255,0.5)";
-    ctx.lineWidth = 1;
-    ctx.font = "10px 'Courier New', monospace";
-    ctx.fillStyle = "rgba(180,210,255,0.75)";
-    ctx.textAlign = "left";
-
-    const speedTicks = [20, 10, 0, -10, -20];
-    speedTicks.forEach((s) => {
-      const y = barMid - (s / 20) * halfH;
-      ctx.beginPath();
-      ctx.moveTo(barX - 5, y);
-      ctx.lineTo(barX + 5, y);
-      ctx.stroke();
-      if (s !== 0) ctx.fillText(`${s > 0 ? "" : ""}${s}`, barX + 7, y + 4);
-      else ctx.fillText("0", barX + 7, y + 4);
-    });
-
-    // Minor ticks
-    for (const s of [15, 5, -5, -15]) {
-      const y = barMid - (s / 20) * halfH;
-      ctx.beginPath();
-      ctx.moveTo(barX - 3, y);
-      ctx.lineTo(barX + 3, y);
-      ctx.stroke();
-    }
-
-    // Green bar
-    ctx.strokeStyle = "#00cc44";
-    ctx.lineWidth = 3;
-    ctx.shadowColor = "#00ff44";
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    ctx.moveTo(barX - 8, barTop);
-    ctx.lineTo(barX - 8, barBot);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Speed indicator line
-    const clampedSpeed = Math.max(-20, Math.min(20, speed));
-    const indicatorY = barMid - (clampedSpeed / 20) * halfH;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(barX - 14, indicatorY);
-    ctx.lineTo(barX - 2, indicatorY);
-    ctx.stroke();
-  }
-
-  function drawBadge(ctx, text, x, y, bg, fg, leftSide) {
-    const w = 58;
-    const h = 26;
-    // Arrow badge pointing left or right
-    ctx.fillStyle = bg;
-    ctx.strokeStyle = "#888";
-    ctx.lineWidth = 1;
-
-    if (leftSide) {
-      // Rectangle with left-pointing arrow
-      ctx.beginPath();
-      ctx.moveTo(x + 8, y);
-      ctx.lineTo(x + 8 + w, y);
-      ctx.lineTo(x + 8 + w, y + h);
-      ctx.lineTo(x + 8, y + h);
-      ctx.lineTo(x, y + h / 2);
-      ctx.closePath();
-    } else {
-      // Rectangle with right-pointing arrow
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + w, y);
-      ctx.lineTo(x + w + 8, y + h / 2);
-      ctx.lineTo(x + w, y + h);
-      ctx.lineTo(x, y + h);
-      ctx.closePath();
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = fg;
-    ctx.font = "bold 15px 'Courier New', monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(text, x + (leftSide ? 8 : 0) + w / 2, y + h / 2 + 5);
-  }
-
-  function drawCompass(ctx, hdg) {
-    const barY = H - 32;
-    const barH = 32;
-    const cx = W / 2;
-
-    // Background already drawn
-    ctx.fillStyle = "rgba(10,14,24,0.95)";
-    ctx.fillRect(0, barY, W, barH);
-
-    // Compass ticks and labels
-    // Show ±60° around current heading
-    const range = 80;
-    const degPerPx = W / (range * 2); // pixels per degree
-
-    const compassLabels = {
-      0: "N", 30: "030", 60: "060", 90: "E",
-      120: "120", 150: "150", 180: "S",
-      210: "210", 240: "240", 270: "W",
-      300: "300", 330: "330", 360: "N",
-    };
-
-    ctx.save();
-    ctx.rect(0, barY, W, barH);
-    ctx.clip();
-
-    for (let d = -180; d <= 540; d += 5) {
-      const norm = ((d % 360) + 360) % 360;
-      const diff = d - hdg;
-      const x = cx + diff * degPerPx;
-
-      if (x < -20 || x > W + 20) continue;
-
-      const isMajor = norm % 30 === 0;
-      const isMid = norm % 10 === 0 && !isMajor;
-
-      ctx.strokeStyle = "rgba(180,210,255,0.7)";
-      ctx.lineWidth = isMajor ? 1.5 : 1;
-
-      const tickH = isMajor ? 10 : isMid ? 7 : 4;
-      ctx.beginPath();
-      ctx.moveTo(x, barY + 4);
-      ctx.lineTo(x, barY + 4 + tickH);
-      ctx.stroke();
-
-      if (isMajor) {
-        const label = compassLabels[norm] || `${norm}`;
-        ctx.fillStyle = "rgba(180,210,255,0.85)";
-        ctx.font = "10px 'Courier New', monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(label, x, barY + barH - 4);
-      }
-    }
-
-    ctx.restore();
-
-    // Center heading box
-    const boxW = 52;
-    const boxH = 22;
-    ctx.fillStyle = "#1a2040";
-    ctx.strokeStyle = "#aabbdd";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.rect(cx - boxW / 2, barY + 5, boxW, boxH);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 13px 'Courier New', monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(`${String(hdg).padStart(3, "0")}°`, cx, barY + 5 + boxH / 2 + 5);
-
-    // Center tick arrow (top)
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.moveTo(cx, barY - 1);
-    ctx.lineTo(cx - 6, barY + 6);
-    ctx.lineTo(cx + 6, barY + 6);
-    ctx.closePath();
-    ctx.fill();
-
-    // Left / Right arrows + N E labels
-    ctx.fillStyle = "rgba(180,210,255,0.85)";
-    ctx.font = "bold 12px 'Courier New', monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("◄", 8, barY + barH / 2 + 5);
-    ctx.textAlign = "right";
-    ctx.fillText("►", W - 8, barY + barH / 2 + 5);
-  }
-
-  // Simulate slight drift for demo
-  useEffect(() => {
-    const id = setInterval(() => {
-      setHeading((h) => h); // static for now, can animate
-    }, 100);
-    return () => clearInterval(id);
+    const initialBubbles = Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      size: Math.random() * 3.5 + 1.5,
+      speed: Math.random() * 4 + 3,
+      delay: Math.random() * 5,
+      opacity: Math.random() * 0.4 + 0.15,
+      drift: (Math.random() - 0.5) * 30
+    }));
+    setBubbles(initialBubbles);
   }, []);
 
+  const heading = isDemo ? demoHeading : propHeading;
+  const depth = isDemo ? demoDepth : propDepth;
+  const pitch = isDemo ? demoPitch : (propPitch || 0.0);
+  const roll = isDemo ? demoRoll : (propRoll || 0.0);
+  const temp = isDemo ? demoTemp : (propTemp || 0.0);
+
+  // Calculate vertical speed (m/min)
+  const lastDepthRef = useRef(depth);
+  const lastTimeRef = useRef(Date.now());
+  const [calculatedVertSpeed, setCalculatedVertSpeed] = useState(0.0);
+
+  useEffect(() => {
+    if (isDemo) return;
+    const now = Date.now();
+    const dt = (now - lastTimeRef.current) / 1000 / 60; // minutes
+    if (dt > 0.005) { // at least 300ms
+      const dDepth = depth - lastDepthRef.current;
+      const calculatedSpeed = dDepth / dt;
+      if (Math.abs(calculatedSpeed) < 100) {
+        setCalculatedVertSpeed(prev => prev + (calculatedSpeed - prev) * 0.15);
+      }
+      lastDepthRef.current = depth;
+      lastTimeRef.current = now;
+    }
+  }, [depth, isDemo]);
+
+  const vertSpeed = isDemo ? 0.0 : calculatedVertSpeed;
+
+  // Simulate drift in demo mode
+  useEffect(() => {
+    if (!isDemo) return;
+    const id = setInterval(() => {
+      setDemoHeading((h) => (h + (Math.random() - 0.5) * 0.15 + 360) % 360);
+      setDemoPitch(() => Math.sin(Date.now() / 2500) * 12.0);
+      setDemoRoll(() => Math.cos(Date.now() / 3000) * 15.0);
+      setDemoDepth((d) => Math.max(0, d + Math.sin(Date.now() / 5000) * 0.02));
+      setDemoTemp((t) => Math.min(60, Math.max(15, t + (Math.random() - 0.5) * 0.04)));
+    }, 100);
+    return () => clearInterval(id);
+  }, [isDemo]);
+
+  // Compass layout calculation (scale ranges ±60 degrees around current heading)
+  const compassRange = 60;
+  const headingTicks = [];
+  const startHdg = Math.floor((heading - compassRange) / 5) * 5;
+  const endHdg = Math.ceil((heading + compassRange) / 5) * 5;
+
+  for (let h = startHdg; h <= endHdg; h++) {
+    const normHdg = ((h % 360) + 360) % 360;
+    const isMajor = normHdg % 30 === 0;
+    const isMid = normHdg % 10 === 0 && !isMajor;
+    
+    // Calculate percentage offset on screen
+    const offsetPct = ((h - heading) / (compassRange * 2)) * 100 + 50;
+    
+    let label = "";
+    if (isMajor) {
+      if (normHdg === 0) label = "N";
+      else if (normHdg === 90) label = "E";
+      else if (normHdg === 180) label = "S";
+      else if (normHdg === 270) label = "W";
+      else label = String(normHdg).padStart(3, "0");
+    }
+
+    if (offsetPct >= 0 && offsetPct <= 100) {
+      headingTicks.push({
+        heading: normHdg,
+        offsetPct,
+        isMajor,
+        isMid,
+        label
+      });
+    }
+  }
+
+  // Depth scale calculation (vertical tape, current depth centered or highlighted)
+  const depthTicks = [];
+  const startDepth = Math.max(0, Math.floor(depth - 8));
+  const endDepth = Math.floor(depth + 8);
+  for (let d = startDepth; d <= endDepth; d++) {
+    const offsetPct = ((d - depth) / 16) * 100 + 50; // center is 50%
+    if (offsetPct >= 0 && offsetPct <= 100) {
+      depthTicks.push({
+        val: d,
+        offsetPct: 100 - offsetPct // inverse for vertical axis (high values at bottom)
+      });
+    }
+  }
+
+  // Vert speed scale calculations (-20 to 20)
+  const speedTicks = [];
+  for (let s = -20; s <= 20; s += 2) {
+    const offsetPct = ((s - vertSpeed) / 24) * 100 + 50; // center is 50%
+    if (offsetPct >= 0 && offsetPct <= 100) {
+      speedTicks.push({
+        val: s,
+        offsetPct: 100 - offsetPct
+      });
+    }
+  }
+
+  const normalizedHdg = ((Math.round(heading) % 360) + 360) % 360;
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#000",
-        fontFamily: "'Courier New', monospace",
-      }}
-    >
-      <div
-        style={{
-          position: "relative",
-          border: "2px solid #1a2a4a",
-          borderRadius: 4,
-          overflow: "hidden",
-          boxShadow: "0 0 40px rgba(0,80,200,0.3)",
-        }}
-      >
-        <canvas ref={canvasRef} width={W} height={H} style={{ display: "block" }} />
+    <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20 pfd-container">
+      <style>{`
+        @keyframes floatUp {
+          0% {
+            transform: translateY(0) translateX(0);
+            opacity: 0;
+          }
+          15% {
+            opacity: var(--bubble-opacity);
+          }
+          85% {
+            opacity: var(--bubble-opacity);
+          }
+          100% {
+            transform: translateY(-200px) translateX(var(--bubble-drift));
+            opacity: 0;
+          }
+        }
+      `}</style>
+      
+      {/* Title */}
+      <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-cyan-800/30 pb-2 mb-2 gap-2 flex-wrap">
+        <span className="flex items-center gap-1.5"><Activity size={12} className="animate-pulse" /> PFD DISPLAY</span>
+        <span className="text-cyan-500/70 font-mono flex flex-wrap items-center gap-3">
+          <span>ROLL: {roll.toFixed(1)}°</span>
+          <span>PITCH: {pitch.toFixed(1)}°</span>
+          <span className="flex items-center gap-1">
+            <Thermometer size={10} className={temp > 50 ? "text-red-400 animate-bounce" : "text-cyan-400"} />
+            TEMP: <span className={temp > 50 ? "text-red-400 font-bold" : "text-cyan-400"}>{temp.toFixed(1)}°C</span>
+          </span>
+        </span>
       </div>
 
-      {/* Controls */}
-      <div
-        style={{
-          marginTop: 20,
-          display: "flex",
-          gap: 24,
-          color: "#aaccff",
-          fontSize: 13,
-        }}
-      >
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Heading (°)
-          <input
-            type="range"
-            min={0}
-            max={359}
-            value={heading}
-            onChange={(e) => setHeading(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{heading}°</span>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Depth (m)
-          <input
-            type="range"
-            min={0}
-            max={50}
-            step={0.1}
-            value={depth}
-            onChange={(e) => setDepth(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{depth.toFixed(1)} m</span>
-        </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          Vert Speed (m/min)
-          <input
-            type="range"
-            min={-20}
-            max={20}
-            step={0.1}
-            value={vertSpeed}
-            onChange={(e) => setVertSpeed(Number(e.target.value))}
-            style={{ accentColor: "#00aaff" }}
-          />
-          <span style={{ textAlign: "center" }}>{vertSpeed.toFixed(1)} m/min</span>
-        </label>
+      {/* Main HUD Row */}
+      <div className="flex-1 flex justify-between items-stretch min-h-0 relative py-2 gap-4">
+        
+        {/* Left Column: Depth Tape */}
+        <div className="w-14 flex items-stretch relative border-r border-cyan-800/20 pr-2 select-none">
+          <div className="absolute top-0 bottom-0 right-1 w-[2px] bg-cyan-800/30" />
+          <div className="flex-1 relative overflow-hidden">
+            {depthTicks.map((tick, i) => (
+              <div 
+                key={i} 
+                className="absolute right-0 flex items-center transition-all duration-75"
+                style={{ top: `${tick.offsetPct}%`, transform: 'translateY(-50%)' }}
+              >
+                <span className="text-[9px] mr-1.5 opacity-60 font-bold">{tick.val}m</span>
+                <div className={`h-[1px] bg-cyan-400 ${tick.val % 5 === 0 ? 'w-3' : 'w-1.5'}`} />
+              </div>
+            ))}
+          </div>
+          {/* Depth Badge */}
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 z-20 flex items-center bg-cyan-950 border-2 border-cyan-400 text-white rounded px-1.5 py-0.5 shadow-lg shadow-cyan-950 font-bold text-xs">
+            <Waves size={10} className="mr-1 text-cyan-400 animate-bounce" />
+            {depth.toFixed(1)}
+          </div>
+        </div>
+
+        {/* Center Column: Gyro/Horizon Ball */}
+        <div className="flex-1 flex items-center justify-center relative min-h-0 min-w-0">
+          <div className="relative w-44 h-44 pfd-horizon-ball shrink-0 rounded-full border border-cyan-500/30 bg-cyan-950/20 overflow-hidden flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.1)]">
+            
+            {/* Horizon Disc (Rotates and Pitches) */}
+            <div 
+              className="absolute w-[250%] h-[250%] transition-transform duration-100 ease-out"
+              style={{
+                transform: `rotate(${-roll}deg) translateY(${pitch * 2.5}px)`
+              }}
+            >
+              {/* Sky / Water Column */}
+              <div className="h-1/2 w-full bg-gradient-to-t from-cyan-600/20 to-cyan-950/10 border-b border-cyan-400/80 relative flex items-end justify-center">
+                {/* Sky Pitch Lines */}
+                <div className="absolute bottom-6 flex flex-col items-center gap-6 opacity-60">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-bold">10</span>
+                    <div className="w-10 h-[1px] bg-cyan-400" />
+                    <span className="text-[8px] font-bold">10</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-bold">20</span>
+                    <div className="w-14 h-[1px] bg-cyan-400" />
+                    <span className="text-[8px] font-bold">20</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ground / Seabed */}
+              <div className="h-1/2 w-full bg-gradient-to-b from-amber-950/20 to-amber-950/5 relative flex items-start justify-center">
+                {/* Ground Pitch Lines */}
+                <div className="absolute top-6 flex flex-col items-center gap-6 opacity-60">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] text-amber-500 font-bold">10</span>
+                    <div className="w-10 h-[1px] bg-amber-500/80 dashed" strokeDasharray="2" />
+                    <span className="text-[8px] text-amber-500 font-bold">10</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] text-amber-500 font-bold">20</span>
+                    <div className="w-14 h-[1px] bg-amber-500/80 dashed" strokeDasharray="2" />
+                    <span className="text-[8px] text-amber-500 font-bold">20</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Static Reticle (Submarine indicator) */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+              {/* Left wing */}
+              <div className="w-10 h-[2px] bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
+              {/* Center dot */}
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] mx-2 border border-white" />
+              {/* Right wing */}
+              <div className="w-10 h-[2px] bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
+            </div>
+
+            {/* Roll Degree Markers (Arch around top) */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40 text-cyan-400" viewBox="0 0 100 100">
+              <path d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1,4" />
+              <path d="M 50 15 L 50 12" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M 32.5 20 L 34 22.5" stroke="currentColor" strokeWidth="1" />
+              <path d="M 67.5 20 L 66 22.5" stroke="currentColor" strokeWidth="1" />
+              {/* Roll pointer */}
+              <polygon 
+                points="50,16 47,20 53,20" 
+                fill="#22d3ee" 
+                style={{ 
+                  transform: `rotate(${roll}deg)`, 
+                  transformOrigin: '50px 50px',
+                  transition: 'transform 100ms ease-out'
+                }} 
+              />
+            </svg>
+
+            {/* God Rays / Light Shafts */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-25 mix-blend-screen z-[2]">
+              <div className="absolute top-0 left-[20%] w-[12%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[-15deg] blur-[2px]" />
+              <div className="absolute top-0 left-[45%] w-[18%] h-[120%] bg-gradient-to-b from-cyan-300/40 via-cyan-400/10 to-transparent origin-top rotate-[-5deg] blur-[3px]" />
+              <div className="absolute top-0 left-[70%] w-[10%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[10deg] blur-[2px]" />
+            </div>
+
+            {/* Underwater Bubbles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[3]">
+              {bubbles.map((b) => (
+                <div
+                  key={b.id}
+                  className="absolute rounded-full bg-cyan-300/30 border border-white/10"
+                  style={{
+                    left: `${b.x}%`,
+                    bottom: `-10px`,
+                    width: `${b.size}px`,
+                    height: `${b.size}px`,
+                    animation: `floatUp ${b.speed}s linear infinite`,
+                    animationDelay: `${b.delay}s`,
+                    '--bubble-opacity': b.opacity,
+                    '--bubble-drift': `${b.drift}px`
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Subtle Water Ripple Grid Overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(6,182,212,0.06),_transparent_70%)] animate-pulse pointer-events-none z-[1]" />
+          </div>
+        </div>
+
+        {/* Right Column: Vertical Speed Tape */}
+        <div className="w-14 flex items-stretch relative border-l border-cyan-800/20 pl-2 select-none">
+          <div className="absolute top-0 bottom-0 left-1 w-[2px] bg-cyan-800/30" />
+          <div className="flex-1 relative overflow-hidden">
+            {speedTicks.map((tick, i) => (
+              <div 
+                key={i} 
+                className="absolute left-0 flex items-center transition-all duration-75"
+                style={{ top: `${tick.offsetPct}%`, transform: 'translateY(-50%)' }}
+              >
+                <div className={`h-[1px] bg-cyan-400 ${tick.val % 10 === 0 ? 'w-3' : 'w-1.5'}`} />
+                <span className="text-[9px] ml-1.5 opacity-60 font-bold">{tick.val > 0 ? '+' : ''}{tick.val}</span>
+              </div>
+            ))}
+          </div>
+          {/* Speed Badge */}
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex items-center bg-cyan-950 border-2 border-cyan-400 text-white rounded px-1.5 py-0.5 shadow-lg shadow-cyan-950 font-bold text-xs">
+            {vertSpeed >= 0 ? (
+              <ArrowUpRight size={10} className="mr-1 text-green-400" />
+            ) : (
+              <ArrowDownRight size={10} className="mr-1 text-red-400" />
+            )}
+            {vertSpeed.toFixed(1)}
+          </div>
+        </div>
       </div>
+
+      {/* Sliding Compass at the bottom */}
+      <div className="h-10 sm:h-14 border-t border-cyan-800/30 mt-1 sm:mt-2 pt-1 sm:pt-2 flex flex-col items-center justify-between min-h-0 relative select-none">
+        
+        {/* Sliding compass container */}
+        <div className="w-full h-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-slate-950 z-10 pointer-events-none" />
+          <div className="w-full h-full relative">
+            {headingTicks.map((tick, i) => (
+              <div 
+                key={i}
+                className="absolute top-0 flex flex-col items-center transition-all duration-75"
+                style={{ left: `${tick.offsetPct}%`, transform: 'translateX(-50%)' }}
+              >
+                <span className={`text-[9px] font-bold mb-1 ${tick.isMajor ? 'text-cyan-300' : 'text-cyan-500/50'}`}>
+                  {tick.label || '·'}
+                </span>
+                <div className={`w-[1px] bg-cyan-400 ${tick.isMajor ? 'h-3' : 'h-1.5'}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Center Heading Indicator & digital readout */}
+        <div className="absolute top-[-2px] left-1/2 -translate-x-1/2 flex flex-col items-center z-20 pointer-events-none">
+          <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[5px] border-b-cyan-400 mb-0.5" />
+          <div className="bg-cyan-950 border border-cyan-400 text-cyan-300 px-2.5 py-0.5 rounded text-[11px] font-bold shadow-md shadow-cyan-950/50 flex items-center gap-1.5">
+            <Compass size={11} className="text-cyan-400" />
+            {String(normalizedHdg).padStart(3, "0")}°
+          </div>
+        </div>
+      </div>
+
+      {/* Controls (demo mode only) */}
+      {!hideControls && isDemo && (
+        <div className="mt-3 pt-3 border-t border-cyan-800/20 flex flex-wrap gap-4 justify-center text-[10px] text-cyan-500/80 bg-cyan-950/20 p-2 rounded-lg">
+          <label className="flex flex-col gap-1">
+            Heading
+            <input
+              type="range"
+              min={0}
+              max={359}
+              value={demoHeading}
+              onChange={(e) => setDemoHeading(Number(e.target.value))}
+              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Depth
+            <input
+              type="range"
+              min={0}
+              max={50}
+              step={0.1}
+              value={demoDepth}
+              onChange={(e) => setDemoDepth(Number(e.target.value))}
+              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Pitch
+            <input
+              type="range"
+              min={-30}
+              max={30}
+              step={0.5}
+              value={demoPitch}
+              onChange={(e) => setDemoPitch(Number(e.target.value))}
+              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            Roll
+            <input
+              type="range"
+              min={-45}
+              max={45}
+              step={0.5}
+              value={demoRoll}
+              onChange={(e) => setDemoRoll(Number(e.target.value))}
+              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
 
-export default SonarDisplay;
+export default PrimaryFlightDisplay;
