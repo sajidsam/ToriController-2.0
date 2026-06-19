@@ -11,9 +11,9 @@ const ControlPanel = ({
   // No custom pointer tracking needed; using a native range input overlay.
 
   return (
-    <div className="flex flex-col gap-5 lg:w-72 w-full bg-black p-4 lg:border-l lg:border-t-0 border-t border-white/20 text-white shrink-0 lg:h-full lg:overflow-y-auto">
+    <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5 lg:w-64 xl:w-72 w-full bg-black p-3 sm:p-4 lg:border-l lg:border-t-0 border-t border-white/20 text-white shrink-0 lg:h-full lg:overflow-y-auto overflow-y-auto control-panel-gap control-panel-padding">
 
-      <div className="text-xs font-bold text-white/50 mb-2 uppercase tracking-widest border-b border-white/20 pb-2">
+      <div className="text-xs font-bold text-white/50 mb-2 uppercase tracking-widest border-b border-white/20 pb-2 control-panel-header">
         Actuators & Controls
       </div>
 
@@ -21,30 +21,30 @@ const ControlPanel = ({
       <div className="flex bg-white/5 border border-white/10 rounded-lg p-1 gap-1">
         <button
             onClick={() => setDriveMode('forward')}
-            className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${driveMode === 'forward' ? 'bg-white text-black' : 'text-white/50 hover:bg-white/10'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded transition-colors control-panel-btn ${driveMode === 'forward' ? 'bg-white text-black' : 'text-white/50 hover:bg-white/10'}`}
         >
             FORWARD
         </button>
         <button
             onClick={() => setDriveMode('stopped')}
-            className={`flex-1 py-2 text-sm font-bold rounded transition-colors ${driveMode === 'stopped' ? 'bg-white text-black' : 'text-white/50 hover:bg-white/10'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded transition-colors control-panel-btn ${driveMode === 'stopped' ? 'bg-white text-black' : 'text-white/50 hover:bg-white/10'}`}
         >
             STOP
         </button>
       </div>
 
       {/* Master Throttle Limiter - Airplane Style */}
-      <div className="flex flex-col gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+      <div className="flex flex-col gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-white/5 border border-white/10 rounded-lg control-panel-card">
         <div className="flex items-center justify-between text-sm font-semibold opacity-70">
            <div className="flex items-center gap-2">
-                <SlidersHorizontal size={16} />
-                THROTTLE
+                 <SlidersHorizontal size={16} />
+                 THROTTLE
            </div>
            <span className="font-mono text-white text-lg">{throttleLimit}%</span>
         </div>
 
-        <div className="flex items-center justify-center py-6">
-            <div className="relative h-96 w-28 bg-white/5 border border-white/20 rounded-full flex justify-center py-4 shadow-inner">
+        <div className="flex items-center justify-center py-1 sm:py-2 md:py-3 control-panel-throttle-wrapper">
+            <div className="relative h-96 w-28 bg-white/5 border border-white/20 rounded-full flex justify-center py-4 shadow-inner control-panel-throttle">
 
                 {/* INVISIBLE NATIVE RANGE INPUT OVERLAY */}
                 <input
@@ -52,14 +52,7 @@ const ControlPanel = ({
                     min="0" max="100" step="5"
                     value={throttleLimit}
                     onChange={(e) => setThrottleLimit(parseInt(e.target.value))}
-                    className="absolute z-30 opacity-0 cursor-ns-resize"
-                    style={{
-                        width: '24rem', /* matches parent h-96 */
-                        height: '7rem', /* matches parent w-28 */
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(-90deg)'
-                    }}
+                    className="absolute z-30 opacity-0 cursor-ns-resize control-panel-throttle-input"
                 />
 
                 {/* Vertical slider track (Visual Only) */}
@@ -68,8 +61,8 @@ const ControlPanel = ({
 
                     {/* Custom Handle Thumb Overlay */}
                     <div
-                        className="absolute w-32 h-12 left-1/2 -translate-x-1/2 bg-gradient-to-b from-zinc-200 to-zinc-400 rounded-md border-y-2 border-x border-t-zinc-100 border-b-zinc-600 border-x-zinc-400 shadow-[0_10px_20px_rgba(0,0,0,0.5),_inset_0_2px_4px_rgba(255,255,255,0.8)] transition-all duration-75 flex items-center justify-center flex-col gap-[4px] z-20"
-                        style={{ bottom: `calc(${throttleLimit}% - 1.5rem)` }}
+                        className="absolute w-32 h-12 throttle-handle left-1/2 -translate-x-1/2 bg-gradient-to-b from-zinc-200 to-zinc-400 rounded-md border-y-2 border-x border-t-zinc-100 border-b-zinc-600 border-x-zinc-400 shadow-[0_10px_20px_rgba(0,0,0,0.5),_inset_0_2px_4px_rgba(255,255,255,0.8)] transition-all duration-75 flex items-center justify-center flex-col gap-[4px] z-20"
+                        style={{ bottom: `calc(${throttleLimit}% - var(--throttle-handle-offset, 1.5rem))` }}
                     >
                         <div className="w-16 h-[3px] bg-zinc-500 rounded-full shadow-[0_1px_0_rgba(255,255,255,0.7)] pointer-events-none"></div>
                         <div className="w-16 h-[3px] bg-zinc-500 rounded-full shadow-[0_1px_0_rgba(255,255,255,0.7)] pointer-events-none"></div>
@@ -90,7 +83,7 @@ const ControlPanel = ({
       </div>
 
       {/* Front Fins (Bow Planes) */}
-      <div className="flex flex-col gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+      <div className="flex flex-col gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-white/5 border border-white/10 rounded-lg control-panel-card">
         <div className="flex items-center justify-between text-sm font-semibold opacity-70">
            <div className="flex items-center gap-2">
                 <Move3d size={16} />
@@ -113,17 +106,17 @@ const ControlPanel = ({
       </div>
 
       {/* Rear Fins (Empennage) - Keyboard Control */}
-      <div className="flex flex-col gap-2 p-3 bg-white/5 border border-white/10 rounded-lg">
-        <div className="flex items-center gap-2 text-sm font-semibold mb-2 opacity-70">
+      <div className="flex flex-col gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-white/5 border border-white/10 rounded-lg control-panel-card">
+        <div className="flex items-center gap-2 text-sm font-semibold mb-2 opacity-70 control-panel-card-title">
             <Move3d size={16} />
             EMPENNAGE (REAR)
         </div>
 
-        <div className="flex justify-between gap-4 text-xs font-mono font-bold text-white bg-white/10 border border-white/20 p-2 rounded">
+        <div className="flex justify-between gap-4 text-xs font-mono font-bold text-white bg-white/10 border border-white/20 p-2 rounded control-panel-readout">
             <span>X (YAW): {rearFinX}°</span>
             <span>Y (PITCH): {rearFinY}°</span>
         </div>
-        <div className="text-[10px] text-white/50 font-mono mt-1 text-center bg-white/5 py-1 rounded border border-white/10">Use Arrow Keys (↑↓←→)</div>
+        <div className="text-[10px] text-white/50 font-mono mt-1 text-center bg-white/5 py-1 rounded border border-white/10 control-panel-hint">Use Arrow Keys (↑↓←→)</div>
       </div>
 
       {/* Ballast / Pump Control */}

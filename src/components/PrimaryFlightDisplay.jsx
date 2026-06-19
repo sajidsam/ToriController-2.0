@@ -135,7 +135,7 @@ function PrimaryFlightDisplay({
   const normalizedHdg = ((Math.round(heading) % 360) + 360) % 360;
 
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20">
+    <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20 pfd-container">
       <style>{`
         @keyframes floatUp {
           0% {
@@ -195,7 +195,7 @@ function PrimaryFlightDisplay({
 
         {/* Center Column: Gyro/Horizon Ball */}
         <div className="flex-1 flex items-center justify-center relative min-h-0 min-w-0">
-          <div className="relative w-44 h-44 rounded-full border border-cyan-500/30 bg-cyan-950/20 overflow-hidden flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.1)]">
+          <div className="relative w-44 h-44 pfd-horizon-ball shrink-0 rounded-full border border-cyan-500/30 bg-cyan-950/20 overflow-hidden flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.1)]">
             
             {/* Horizon Disc (Rotates and Pitches) */}
             <div 
@@ -327,7 +327,7 @@ function PrimaryFlightDisplay({
       </div>
 
       {/* Sliding Compass at the bottom */}
-      <div className="h-14 border-t border-cyan-800/30 mt-2 pt-2 flex flex-col items-center justify-between min-h-0 relative select-none">
+      <div className="h-10 sm:h-14 border-t border-cyan-800/30 mt-1 sm:mt-2 pt-1 sm:pt-2 flex flex-col items-center justify-between min-h-0 relative select-none">
         
         {/* Sliding compass container */}
         <div className="w-full h-6 relative overflow-hidden">
