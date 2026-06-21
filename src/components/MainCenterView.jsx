@@ -234,17 +234,17 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                 </div>
 
                 {/* 4. Attitude and Compass Overlay underneath camera */}
-                <div className="relative z-10 flex flex-wrap gap-1 lg:gap-1.5 w-full justify-center shrink-0 grid-area-indicators">
+                <div className="relative z-10 flex flex-col gap-1 lg:gap-1.5 w-full items-stretch shrink-0 grid-area-indicators px-1 lg:px-2">
 
                     {/* Artificial Horizon (Textual & Basic Visual for now) */}
-                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-0.5 sm:p-1 rounded-lg w-[140px] sm:w-[160px] shrink-0 flex items-center justify-between gap-1 shadow-xl">
-                        <div className="flex flex-col gap-0.5 items-center justify-between bg-white/5 p-0.5 sm:p-1 rounded border border-white/10 flex-1">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-1 rounded-lg w-full shrink-0 flex items-center justify-between gap-0.5 shadow-xl">
+                        <div className="flex flex-col gap-0.5 items-center justify-between bg-white/5 p-0.5 rounded border border-white/10 flex-1">
                             <span className="text-[6px] sm:text-[7px] text-white/50 font-bold uppercase tracking-widest">Pitch</span>
                             <span className="text-xs sm:text-sm font-mono text-white font-bold drop-shadow-sm text-center">
                                 {pitch > 0 ? '+' : ''}{pitch.toFixed(1)}°
                             </span>
                         </div>
-                        <div className="flex flex-col gap-0.5 items-center bg-white/5 p-0.5 sm:p-1 rounded border border-white/10 flex-1">
+                        <div className="flex flex-col gap-0.5 items-center bg-white/5 p-0.5 rounded border border-white/10 flex-1">
                             <span className="text-[6px] sm:text-[7px] text-white/50 font-bold uppercase tracking-widest">Roll</span>
                             <span className="text-xs sm:text-sm font-mono text-white font-bold drop-shadow-sm text-center">
                                 {roll > 0 ? '+' : ''}{roll.toFixed(1)}°
@@ -253,7 +253,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     </div>
 
                     {/* Speed Indicator */}
-                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-0.5 sm:p-1 rounded-lg flex items-center justify-between shadow-xl gap-1 w-[90px] sm:w-[105px] shrink-0">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-1 rounded-lg flex items-center justify-between shadow-xl gap-1 w-full shrink-0">
                         <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/20 bg-white/5 flex items-center justify-center shrink-0">
                             <FastForward size={10} className="text-white" />
                         </div>
@@ -264,7 +264,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     </div>
 
                     {/* Compass Heading */}
-                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-0.5 sm:p-1 rounded-lg flex items-center justify-between shadow-xl gap-1 w-[90px] sm:w-[105px] shrink-0">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-1 rounded-lg flex items-center justify-between shadow-xl gap-1 w-full shrink-0">
                         <div className="flex flex-col gap-0.5 flex-1">
                             <span className="text-[6px] sm:text-[7px] text-white/50 font-bold uppercase tracking-widest">Heading</span>
                             <span className="text-xs sm:text-sm font-mono text-white font-bold drop-shadow-sm">{Math.floor(heading).toString().padStart(3, '0')}°</span>
@@ -280,11 +280,11 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     </div>
 
                     {/* Live Fin Deflection Readout */}
-                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-0.5 sm:p-1 rounded-lg flex flex-col justify-center shadow-xl gap-0.5 w-[150px] sm:w-[170px] shrink-0">
+                    <div className="bg-black/60 backdrop-blur-md border border-white/20 p-1 rounded-lg flex flex-col justify-center shadow-xl gap-0.5 w-full shrink-0">
                         <span className="text-[6px] sm:text-[7px] text-white/50 font-bold uppercase tracking-widest border-b border-white/10 pb-0.5 mb-0.5 flex items-center gap-1 justify-center drop-shadow-sm">
                             <Move3d size={6} /> Controls
                         </span>
-                        <div className="flex justify-between items-center px-0.5 text-[8px] sm:text-[9px] font-mono text-center gap-1">
+                        <div className="flex justify-between items-center px-0 text-[8px] sm:text-[9px] font-mono text-center gap-0.5">
                             <div className="flex-1">
                                 <div className="text-white/50 text-[5px] sm:text-[6px] leading-tight">BOW</div>
                                 <div className={`${frontFinAngle === 0 ? 'text-white/50' : 'text-white font-bold'}`}>{frontFinAngle > 0 ? '+' : ''}{frontFinAngle}°</div>
