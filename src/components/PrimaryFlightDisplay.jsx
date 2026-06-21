@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Compass, Waves, ArrowUpRight, ArrowDownRight, Activity, Thermometer } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 
 function PrimaryFlightDisplay({
   heading: propHeading,
@@ -7,409 +6,392 @@ function PrimaryFlightDisplay({
   pitch: propPitch,
   roll: propRoll,
   temp: propTemp,
-  hideControls = true
 }) {
+  /* ── Demo / live mode ─────────────────────────────────────── */
   const isDemo = propHeading === undefined && propDepth === undefined;
 
-  const [demoHeading, setDemoHeading] = useState(41);
-  const [demoDepth, setDemoDepth] = useState(2.6);
-  const [demoPitch, setDemoPitch] = useState(0.0);
-  const [demoRoll, setDemoRoll] = useState(0.0);
-  const [demoTemp, setDemoTemp] = useState(24.5);
+  const [demoH, setDemoH] = useState(41);
+  const [demoD, setDemoD] = useState(2.6);
+  const [demoP, setDemoP] = useState(0.0);
+  const [demoR, setDemoR] = useState(0.0);
+  const [demoT, setDemoT] = useState(22.4);
 
-  const [bubbles, setBubbles] = useState([]);
-  useEffect(() => {
-    const initialBubbles = Array.from({ length: 25 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      size: Math.random() * 3.5 + 1.5,
-      speed: Math.random() * 4 + 3,
-      delay: Math.random() * 5,
-      opacity: Math.random() * 0.4 + 0.15,
-      drift: (Math.random() - 0.5) * 30
-    }));
-    setBubbles(initialBubbles);
-  }, []);
-
-  const heading = isDemo ? demoHeading : propHeading;
-  const depth = isDemo ? demoDepth : propDepth;
-  const pitch = isDemo ? demoPitch : (propPitch || 0.0);
-  const roll = isDemo ? demoRoll : (propRoll || 0.0);
-  const temp = isDemo ? demoTemp : (propTemp || 0.0);
-
-  // Calculate vertical speed (m/min)
-  const lastDepthRef = useRef(depth);
-  const lastTimeRef = useRef(Date.now());
-  const [calculatedVertSpeed, setCalculatedVertSpeed] = useState(0.0);
-
-  useEffect(() => {
-    if (isDemo) return;
-    const now = Date.now();
-    const dt = (now - lastTimeRef.current) / 1000 / 60; // minutes
-    if (dt > 0.005) { // at least 300ms
-      const dDepth = depth - lastDepthRef.current;
-      const calculatedSpeed = dDepth / dt;
-      if (Math.abs(calculatedSpeed) < 100) {
-        setCalculatedVertSpeed(prev => prev + (calculatedSpeed - prev) * 0.15);
-      }
-      lastDepthRef.current = depth;
-      lastTimeRef.current = now;
-    }
-  }, [depth, isDemo]);
-
-  const vertSpeed = isDemo ? 0.0 : calculatedVertSpeed;
-
-  // Simulate drift in demo mode
   useEffect(() => {
     if (!isDemo) return;
     const id = setInterval(() => {
-      setDemoHeading((h) => (h + (Math.random() - 0.5) * 0.15 + 360) % 360);
-      setDemoPitch(() => Math.sin(Date.now() / 2500) * 12.0);
-      setDemoRoll(() => Math.cos(Date.now() / 3000) * 15.0);
-      setDemoDepth((d) => Math.max(0, d + Math.sin(Date.now() / 5000) * 0.02));
-      setDemoTemp((t) => Math.min(60, Math.max(15, t + (Math.random() - 0.5) * 0.04)));
-    }, 100);
+      setDemoH(h => (h + (Math.random() - 0.5) * 0.2 + 360) % 360);
+      setDemoP(() => Math.sin(Date.now() / 2800) * 10);
+      setDemoR(() => Math.cos(Date.now() / 3200) * 14);
+      setDemoD(d => Math.max(0, d + Math.sin(Date.now() / 5000) * 0.025));
+      setDemoT(t => Math.min(60, Math.max(14, t + (Math.random() - 0.5) * 0.05)));
+    }, 80);
     return () => clearInterval(id);
   }, [isDemo]);
 
-  // Compass layout calculation (scale ranges ±60 degrees around current heading)
-  const compassRange = 60;
-  const headingTicks = [];
-  const startHdg = Math.floor((heading - compassRange) / 5) * 5;
-  const endHdg = Math.ceil((heading + compassRange) / 5) * 5;
+  const heading = isDemo ? demoH : (propHeading ?? 0);
+  const depth = isDemo ? demoD : (propDepth ?? 0);
+  const pitch = isDemo ? demoP : (propPitch ?? 0);
+  const roll = isDemo ? demoR : (propRoll ?? 0);
+  const temp = isDemo ? demoT : (propTemp ?? 0);
 
-  for (let h = startHdg; h <= endHdg; h++) {
-    const normHdg = ((h % 360) + 360) % 360;
-    const isMajor = normHdg % 30 === 0;
-    const isMid = normHdg % 10 === 0 && !isMajor;
-    
-    // Calculate percentage offset on screen
-    const offsetPct = ((h - heading) / (compassRange * 2)) * 100 + 50;
-    
-    let label = "";
-    if (isMajor) {
-      if (normHdg === 0) label = "N";
-      else if (normHdg === 90) label = "E";
-      else if (normHdg === 180) label = "S";
-      else if (normHdg === 270) label = "W";
-      else label = String(normHdg).padStart(3, "0");
+  /* ── Vertical speed ───────────────────────────────────────── */
+  const lastDRef = useRef(depth);
+  const lastTRef = useRef(Date.now());
+  const [vertSpeed, setVertSpeed] = useState(0);
+  useEffect(() => {
+    if (isDemo) return;
+    const now = Date.now();
+    const dt = (now - lastTRef.current) / 1000 / 60;
+    if (dt > 0.005) {
+      const spd = (depth - lastDRef.current) / dt;
+      if (Math.abs(spd) < 100) setVertSpeed(p => p + (spd - p) * 0.15);
+      lastDRef.current = depth;
+      lastTRef.current = now;
     }
+  }, [depth, isDemo]);
 
-    if (offsetPct >= 0 && offsetPct <= 100) {
-      headingTicks.push({
-        heading: normHdg,
-        offsetPct,
-        isMajor,
-        isMid,
-        label
-      });
-    }
-  }
-
-  // Depth scale calculation (vertical tape, current depth centered or highlighted)
-  const depthTicks = [];
-  const startDepth = Math.max(0, Math.floor(depth - 8));
-  const endDepth = Math.floor(depth + 8);
-  for (let d = startDepth; d <= endDepth; d++) {
-    const offsetPct = ((d - depth) / 16) * 100 + 50; // center is 50%
-    if (offsetPct >= 0 && offsetPct <= 100) {
-      depthTicks.push({
-        val: d,
-        offsetPct: 100 - offsetPct // inverse for vertical axis (high values at bottom)
-      });
-    }
-  }
-
-  // Vert speed scale calculations (-20 to 20)
-  const speedTicks = [];
-  for (let s = -20; s <= 20; s += 2) {
-    const offsetPct = ((s - vertSpeed) / 24) * 100 + 50; // center is 50%
-    if (offsetPct >= 0 && offsetPct <= 100) {
-      speedTicks.push({
-        val: s,
-        offsetPct: 100 - offsetPct
-      });
-    }
-  }
-
+  /* ── Derived values ───────────────────────────────────────── */
   const normalizedHdg = ((Math.round(heading) % 360) + 360) % 360;
+  const pitchPx = Math.max(-30, Math.min(30, pitch)) * 3;
+  const clampedRoll = Math.max(-60, Math.min(60, roll));
+  const tempWarning = temp > 50;
+
+  /* ── Compass tape ticks ───────────────────────────────────── */
+  const compassTicks = useMemo(() => {
+    const range = 60, ticks = [];
+    const s = Math.floor((heading - range) / 5) * 5;
+    const e = Math.ceil((heading + range) / 5) * 5;
+    for (let h = s; h <= e; h++) {
+      const n = ((h % 360) + 360) % 360;
+      const off = ((h - heading) / (range * 2)) * 100 + 50;
+      if (off < -2 || off > 102) continue;
+      const maj = n % 30 === 0, mid = n % 10 === 0 && !maj;
+      let label = maj
+        ? n === 0 ? "N" : n === 90 ? "E" : n === 180 ? "S" : n === 270 ? "W"
+          : String(n).padStart(3, "0")
+        : "";
+      ticks.push({ n, off, maj, mid, label });
+    }
+    return ticks;
+  }, [heading]);
+
+  /* ── Depth tape ticks ─────────────────────────────────────── */
+  const depthTicks = useMemo(() => {
+    const ticks = [];
+    const s = Math.max(0, Math.floor(depth - 10));
+    const e = Math.floor(depth + 10);
+    for (let d = s; d <= e; d++) {
+      const pct = 100 - (((d - depth) / 20) * 100 + 50);
+      if (pct >= 0 && pct <= 100) ticks.push({ val: d, pct });
+    }
+    return ticks;
+  }, [depth]);
+
+  /* ── Vert speed tape ticks ────────────────────────────────── */
+  const vsTicks = useMemo(() => {
+    const ticks = [];
+    for (let s = -20; s <= 20; s += 2) {
+      const pct = 100 - (((s - vertSpeed) / 28) * 100 + 50);
+      if (pct >= 0 && pct <= 100) ticks.push({ val: s, pct });
+    }
+    return ticks;
+  }, [vertSpeed]);
+
+  const pitchLadder = [-20, -15, -10, -5, 5, 10, 15, 20];
+
+  /* ── Shared white color tokens ────────────────────────────── */
+  const W70 = "rgba(255,255,255,0.70)";
+  const W45 = "rgba(255,255,255,0.45)";
+  const W25 = "rgba(255,255,255,0.25)";
+  const W12 = "rgba(255,255,255,0.12)";
+  const W06 = "rgba(255,255,255,0.06)";
+  const BG = "rgba(10,12,16,0.98)";
 
   return (
-    <div className="w-full h-full flex flex-col justify-between select-none relative font-mono text-cyan-400 p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md rounded-xl border border-cyan-800/30 overflow-hidden shadow-[inset_0_0_20px_rgba(6,182,212,0.15)] shadow-cyan-950/20 pfd-container">
+    <div
+      className="w-full h-full flex flex-col select-none relative pfd-container"
+      style={{
+        fontFamily: "'Share Tech Mono', 'Courier New', monospace",
+        background: "linear-gradient(180deg, #0c0e13 0%, #080a0e 100%)",
+        overflow: "hidden",
+        color: "#fff",
+      }}
+    >
       <style>{`
-        @keyframes floatUp {
-          0% {
-            transform: translateY(0) translateX(0);
-            opacity: 0;
-          }
-          15% {
-            opacity: var(--bubble-opacity);
-          }
-          85% {
-            opacity: var(--bubble-opacity);
-          }
-          100% {
-            transform: translateY(-200px) translateX(var(--bubble-drift));
-            opacity: 0;
-          }
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        @keyframes pfd-pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+        .pfd-scanlines {
+          background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
         }
+        .pfd-tape {
+          background: rgba(0,0,0,0.55);
+          border: 1px solid rgba(255,255,255,0.10);
+        }
+        .pfd-badge {
+          background: rgba(0,0,0,0.8);
+          border: 1.5px solid rgba(255,255,255,0.55);
+          box-shadow: 0 0 8px rgba(255,255,255,0.08);
+        }
+        .pfd-badge-warn {
+          border-color: rgba(239,68,68,0.9) !important;
+          box-shadow: 0 0 10px rgba(239,68,68,0.4) !important;
+          animation: pfd-pulse 1s ease-in-out infinite;
+        }
+        .pfd-readout {
+          background: rgba(0,0,0,0.6);
+          border: 1px solid rgba(255,255,255,0.15);
+        }
+        .pfd-sep-h { border-bottom: 1px solid rgba(255,255,255,0.10); }
+        .pfd-sep-t { border-top:    1px solid rgba(255,255,255,0.10); }
       `}</style>
-      
-      {/* Title */}
-      <div className="flex justify-between items-center text-[10px] uppercase font-bold tracking-widest border-b border-cyan-800/30 pb-2 mb-2 gap-2 flex-wrap">
-        <span className="flex items-center gap-1.5"><Activity size={12} className="animate-pulse" /> PFD DISPLAY</span>
-        <span className="text-cyan-500/70 font-mono flex flex-wrap items-center gap-3">
-          <span>ROLL: {roll.toFixed(1)}°</span>
-          <span>PITCH: {pitch.toFixed(1)}°</span>
-          <span className="flex items-center gap-1">
-            <Thermometer size={10} className={temp > 50 ? "text-red-400 animate-bounce" : "text-cyan-400"} />
-            TEMP: <span className={temp > 50 ? "text-red-400 font-bold" : "text-cyan-400"}>{temp.toFixed(1)}°C</span>
-          </span>
+
+      {/* Subtle scanlines */}
+      <div className="pfd-scanlines absolute inset-0 pointer-events-none z-50" />
+
+      {/* ── HEADER: PFD label + Pitch / Roll / Yaw readouts ─── */}
+      <div className="pfd-sep-h shrink-0 flex items-center justify-between px-3 py-1.5">
+        <span style={{ fontSize: "9px", fontWeight: "700", letterSpacing: "0.22em", color: W45 }}>
+          PRIMARY FLIGHT DISPLAY
         </span>
+
+        <div className="flex items-center gap-3">
+          {[
+            { label: "PITCH", val: `${pitch >= 0 ? "+" : ""}${pitch.toFixed(1)}°` },
+            { label: "ROLL", val: `${roll >= 0 ? "+" : ""}${roll.toFixed(1)}°` },
+            { label: "YAW", val: `${String(normalizedHdg).padStart(3, "0")}°` },
+            { label: "TEMP", val: `${temp.toFixed(1)}°C`, warn: tempWarning },
+          ].map(item => (
+            <div key={item.label} className="flex flex-col items-center" style={{ minWidth: "38px" }}>
+              <span style={{ fontSize: "6.5px", color: W45, letterSpacing: "0.15em", fontWeight: "700" }}>
+                {item.label}
+              </span>
+              <span style={{
+                fontSize: "10px", fontWeight: "900", letterSpacing: "0.04em",
+                color: item.warn ? "#f87171" : "#fff",
+                textShadow: item.warn
+                  ? "0 0 8px rgba(239,68,68,0.8)"
+                  : "0 0 6px rgba(255,255,255,0.25)",
+              }}>
+                {item.val}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Main HUD Row */}
-      <div className="flex-1 flex justify-between items-stretch min-h-0 relative py-2 gap-4">
-        
-        {/* Left Column: Depth Tape */}
-        <div className="w-14 flex items-stretch relative border-r border-cyan-800/20 pr-2 select-none">
-          <div className="absolute top-0 bottom-0 right-1 w-[2px] bg-cyan-800/30" />
-          <div className="flex-1 relative overflow-hidden">
-            {depthTicks.map((tick, i) => (
-              <div 
-                key={i} 
-                className="absolute right-0 flex items-center transition-all duration-75"
-                style={{ top: `${tick.offsetPct}%`, transform: 'translateY(-50%)' }}
-              >
-                <span className="text-[9px] mr-1.5 opacity-60 font-bold">{tick.val}m</span>
-                <div className={`h-[1px] bg-cyan-400 ${tick.val % 5 === 0 ? 'w-3' : 'w-1.5'}`} />
-              </div>
-            ))}
+      {/* ── MAIN ROW: Depth tape | Horizon | VS tape ─────────── */}
+      <div className="flex-1 flex items-stretch min-h-0 px-2 py-2 gap-2">
+
+        {/* ── LEFT: Depth tape ──────────────────────────────── */}
+        <div className="pfd-tape flex flex-col relative shrink-0 rounded-md overflow-hidden" style={{ width: "50px" }}>
+          <div style={{ fontSize: "7px", fontWeight: "700", letterSpacing: "0.15em", color: W45, textAlign: "center", padding: "3px 0", borderBottom: `1px solid ${W12}` }}>
+            DEPTH
           </div>
-          {/* Depth Badge */}
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 z-20 flex items-center bg-cyan-950 border-2 border-cyan-400 text-white rounded px-1.5 py-0.5 shadow-lg shadow-cyan-950 font-bold text-xs">
-            <Waves size={10} className="mr-1 text-cyan-400 animate-bounce" />
+          <div className="flex-1 relative overflow-hidden">
+            {/* fade top/bottom */}
+            <div className="absolute inset-0 z-20 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 22%, transparent 78%, rgba(0,0,0,0.85) 100%)" }} />
+            {/* center line */}
+            <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: "50%", height: "1px", background: W45 }} />
+            {depthTicks.map((tick, i) => {
+              const maj = tick.val % 5 === 0;
+              return (
+                <div key={i} className="absolute right-0 flex items-center" style={{ top: `${tick.pct}%`, transform: "translateY(-50%)" }}>
+                  {maj && (
+                    <span style={{ fontSize: "8px", fontWeight: "700", color: W70, marginRight: "3px", width: "24px", textAlign: "right", lineHeight: 1 }}>
+                      {tick.val}
+                    </span>
+                  )}
+                  <div style={{ height: "1px", width: maj ? "9px" : "5px", background: maj ? W70 : W25 }} />
+                </div>
+              );
+            })}
+            <div style={{ position: "absolute", bottom: "3px", left: 0, right: 0, textAlign: "center", fontSize: "7px", color: W25, fontWeight: "700", zIndex: 30 }}>m</div>
+          </div>
+          {/* Depth value */}
+          <div className="pfd-badge text-center mx-1 mb-1 py-0.5 rounded-sm" style={{ fontSize: "11px", fontWeight: "900", color: "#fff" }}>
             {depth.toFixed(1)}
           </div>
         </div>
 
-        {/* Center Column: Gyro/Horizon Ball */}
-        <div className="flex-1 flex items-center justify-center relative min-h-0 min-w-0">
-          <div className="relative w-44 h-44 pfd-horizon-ball shrink-0 rounded-full border border-cyan-500/30 bg-cyan-950/20 overflow-hidden flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.1)]">
-            
-            {/* Horizon Disc (Rotates and Pitches) */}
-            <div 
-              className="absolute w-[250%] h-[250%] transition-transform duration-100 ease-out"
-              style={{
-                transform: `rotate(${-roll}deg) translateY(${pitch * 2.5}px)`
-              }}
-            >
-              {/* Sky / Water Column */}
-              <div className="h-1/2 w-full bg-gradient-to-t from-cyan-600/20 to-cyan-950/10 border-b border-cyan-400/80 relative flex items-end justify-center">
-                {/* Sky Pitch Lines */}
-                <div className="absolute bottom-6 flex flex-col items-center gap-6 opacity-60">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-bold">10</span>
-                    <div className="w-10 h-[1px] bg-cyan-400" />
-                    <span className="text-[8px] font-bold">10</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-bold">20</span>
-                    <div className="w-14 h-[1px] bg-cyan-400" />
-                    <span className="text-[8px] font-bold">20</span>
-                  </div>
-                </div>
-              </div>
+        {/* ── CENTER: Artificial Horizon ────────────────────── */}
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 min-w-0">
+          <div
+            className="pfd-horizon-ball relative shrink-0 rounded-full overflow-hidden"
+            style={{
+              boxShadow: "0 0 0 2px rgba(255,255,255,0.18), 0 0 24px rgba(0,0,0,0.8), inset 0 0 32px rgba(0,0,0,0.5)",
+              background: "#000",
+            }}
+          >
+            <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full" style={{ overflow: "hidden" }}>
+              <defs>
+                <clipPath id="pfd-clip"><circle cx="100" cy="100" r="99" /></clipPath>
+                <linearGradient id="pfd-sky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0d1f3c" />
+                  <stop offset="100%" stopColor="#163358" />
+                </linearGradient>
+                <linearGradient id="pfd-gnd" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2a1505" />
+                  <stop offset="100%" stopColor="#140a02" />
+                </linearGradient>
+                <radialGradient id="pfd-vig" cx="50%" cy="50%" r="50%">
+                  <stop offset="55%" stopColor="transparent" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.7)" />
+                </radialGradient>
+              </defs>
 
-              {/* Ground / Seabed */}
-              <div className="h-1/2 w-full bg-gradient-to-b from-amber-950/20 to-amber-950/5 relative flex items-start justify-center">
-                {/* Ground Pitch Lines */}
-                <div className="absolute top-6 flex flex-col items-center gap-6 opacity-60">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] text-amber-500 font-bold">10</span>
-                    <div className="w-10 h-[1px] bg-amber-500/80 dashed" strokeDasharray="2" />
-                    <span className="text-[8px] text-amber-500 font-bold">10</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] text-amber-500 font-bold">20</span>
-                    <div className="w-14 h-[1px] bg-amber-500/80 dashed" strokeDasharray="2" />
-                    <span className="text-[8px] text-amber-500 font-bold">20</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              {/* Rotating group */}
+              <g clipPath="url(#pfd-clip)" transform={`rotate(${-clampedRoll}, 100, 100) translate(0, ${pitchPx})`}>
+                <rect x="-300" y="-300" width="800" height="400" fill="url(#pfd-sky)" />
+                <line x1="-300" y1="100" x2="500" y2="100" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" />
+                <rect x="-300" y="100" width="800" height="400" fill="url(#pfd-gnd)" />
 
-            {/* Static Reticle (Submarine indicator) */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-              {/* Left wing */}
-              <div className="w-10 h-[2px] bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
-              {/* Center dot */}
-              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] mx-2 border border-white" />
-              {/* Right wing */}
-              <div className="w-10 h-[2px] bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
-            </div>
+                {/* Pitch ladder */}
+                {pitchLadder.map(deg => {
+                  const y = 100 - deg * 3;
+                  const isMaj = Math.abs(deg) % 10 === 0;
+                  const wHalf = isMaj ? 32 : 20;
+                  const col = deg > 0 ? "rgba(120,180,255,0.75)" : "rgba(210,130,60,0.75)";
+                  const tcol = deg > 0 ? "rgba(140,200,255,0.9)" : "rgba(240,160,80,0.9)";
+                  return (
+                    <g key={deg}>
+                      <line x1={100 - wHalf} y1={y} x2={100 + wHalf} y2={y} stroke={col} strokeWidth="1" />
+                      <line x1={100 - wHalf} y1={y} x2={100 - wHalf} y2={y + (deg > 0 ? 5 : -5)} stroke={col} strokeWidth="0.8" />
+                      <line x1={100 + wHalf} y1={y} x2={100 + wHalf} y2={y + (deg > 0 ? 5 : -5)} stroke={col} strokeWidth="0.8" />
+                      {isMaj && (
+                        <>
+                          <text x={100 - wHalf - 5} y={y + 3.5} textAnchor="end" fontSize="9" fill={tcol} fontFamily="monospace" fontWeight="700">{Math.abs(deg)}</text>
+                          <text x={100 + wHalf + 5} y={y + 3.5} textAnchor="start" fontSize="9" fill={tcol} fontFamily="monospace" fontWeight="700">{Math.abs(deg)}</text>
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
 
-            {/* Roll Degree Markers (Arch around top) */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40 text-cyan-400" viewBox="0 0 100 100">
-              <path d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="1,4" />
-              <path d="M 50 15 L 50 12" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M 32.5 20 L 34 22.5" stroke="currentColor" strokeWidth="1" />
-              <path d="M 67.5 20 L 66 22.5" stroke="currentColor" strokeWidth="1" />
-              {/* Roll pointer */}
-              <polygon 
-                points="50,16 47,20 53,20" 
-                fill="#22d3ee" 
-                style={{ 
-                  transform: `rotate(${roll}deg)`, 
-                  transformOrigin: '50px 50px',
-                  transition: 'transform 100ms ease-out'
-                }} 
+              {/* Vignette */}
+              <circle cx="100" cy="100" r="100" fill="url(#pfd-vig)" clipPath="url(#pfd-clip)" />
+
+              {/* Roll scale arc (fixed frame) */}
+              <path d="M 36 100 A 64 64 0 0 1 164 100" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" strokeDasharray="2 5" />
+              {[-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60].map(ang => {
+                const rad = ((ang - 90) * Math.PI) / 180;
+                const r1 = 64;
+                const r2 = ang === 0 ? 54 : Math.abs(ang) % 30 === 0 ? 58 : 61;
+                return (
+                  <line key={ang}
+                    x1={100 + r1 * Math.cos(rad)} y1={100 + r1 * Math.sin(rad)}
+                    x2={100 + r2 * Math.cos(rad)} y2={100 + r2 * Math.sin(rad)}
+                    stroke={ang === 0 ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.35)"}
+                    strokeWidth={ang === 0 ? "1.5" : "0.8"}
+                  />
+                );
+              })}
+
+              {/* Roll pointer (rotates) */}
+              <polygon
+                points="100,37 96,45 104,45"
+                fill="#fff"
+                stroke="rgba(0,0,0,0.4)"
+                strokeWidth="0.5"
+                style={{
+                  transform: `rotate(${clampedRoll}deg)`,
+                  transformOrigin: "100px 100px",
+                  transition: "transform 100ms ease-out",
+                  filter: "drop-shadow(0 0 3px rgba(255,255,255,0.6))",
+                }}
               />
+
+              {/* Fixed reticle */}
+              {/* Bank indicator notch */}
+              <polygon points="100,163 96,157 104,157" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" />
+              {/* Left wing */}
+              <line x1="58" y1="100" x2="80" y2="100" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="58" y1="100" x2="58" y2="107" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Right wing */}
+              <line x1="120" y1="100" x2="142" y2="100" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="142" y1="100" x2="142" y2="107" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Center */}
+              <circle cx="100" cy="100" r="2.5" fill="#fff" style={{ filter: "drop-shadow(0 0 4px rgba(255,255,255,0.9))" }} />
+              <circle cx="100" cy="100" r="5.5" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1" />
+
+              {/* Outer bezel */}
+              <circle cx="100" cy="100" r="99" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
             </svg>
-
-            {/* God Rays / Light Shafts */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-25 mix-blend-screen z-[2]">
-              <div className="absolute top-0 left-[20%] w-[12%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[-15deg] blur-[2px]" />
-              <div className="absolute top-0 left-[45%] w-[18%] h-[120%] bg-gradient-to-b from-cyan-300/40 via-cyan-400/10 to-transparent origin-top rotate-[-5deg] blur-[3px]" />
-              <div className="absolute top-0 left-[70%] w-[10%] h-[120%] bg-gradient-to-b from-cyan-300/30 via-cyan-400/5 to-transparent origin-top rotate-[10deg] blur-[2px]" />
-            </div>
-
-            {/* Underwater Bubbles */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[3]">
-              {bubbles.map((b) => (
-                <div
-                  key={b.id}
-                  className="absolute rounded-full bg-cyan-300/30 border border-white/10"
-                  style={{
-                    left: `${b.x}%`,
-                    bottom: `-10px`,
-                    width: `${b.size}px`,
-                    height: `${b.size}px`,
-                    animation: `floatUp ${b.speed}s linear infinite`,
-                    animationDelay: `${b.delay}s`,
-                    '--bubble-opacity': b.opacity,
-                    '--bubble-drift': `${b.drift}px`
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Subtle Water Ripple Grid Overlay */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(6,182,212,0.06),_transparent_70%)] animate-pulse pointer-events-none z-[1]" />
           </div>
         </div>
 
-        {/* Right Column: Vertical Speed Tape */}
-        <div className="w-14 flex items-stretch relative border-l border-cyan-800/20 pl-2 select-none">
-          <div className="absolute top-0 bottom-0 left-1 w-[2px] bg-cyan-800/30" />
+        {/* ── RIGHT: Vertical Speed tape ────────────────────── */}
+        <div className="pfd-tape flex flex-col relative shrink-0 rounded-md overflow-hidden" style={{ width: "50px" }}>
+          <div style={{ fontSize: "7px", fontWeight: "700", letterSpacing: "0.15em", color: W45, textAlign: "center", padding: "3px 0", borderBottom: `1px solid ${W12}`, whiteSpace: "nowrap" }}>
+            V/SPD
+          </div>
           <div className="flex-1 relative overflow-hidden">
-            {speedTicks.map((tick, i) => (
-              <div 
-                key={i} 
-                className="absolute left-0 flex items-center transition-all duration-75"
-                style={{ top: `${tick.offsetPct}%`, transform: 'translateY(-50%)' }}
-              >
-                <div className={`h-[1px] bg-cyan-400 ${tick.val % 10 === 0 ? 'w-3' : 'w-1.5'}`} />
-                <span className="text-[9px] ml-1.5 opacity-60 font-bold">{tick.val > 0 ? '+' : ''}{tick.val}</span>
-              </div>
-            ))}
+            <div className="absolute inset-0 z-20 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 22%, transparent 78%, rgba(0,0,0,0.85) 100%)" }} />
+            <div className="absolute left-0 right-0 z-10 pointer-events-none" style={{ top: "50%", height: "1px", background: W45 }} />
+            {vsTicks.map((tick, i) => {
+              const maj = tick.val % 10 === 0;
+              return (
+                <div key={i} className="absolute left-0 flex items-center" style={{ top: `${tick.pct}%`, transform: "translateY(-50%)" }}>
+                  <div style={{ height: "1px", width: maj ? "9px" : "5px", background: maj ? W70 : W25 }} />
+                  {maj && (
+                    <span style={{ fontSize: "8px", fontWeight: "700", color: tick.val === 0 ? "#fff" : W70, marginLeft: "3px", lineHeight: 1 }}>
+                      {tick.val > 0 ? "+" : ""}{tick.val}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          {/* Speed Badge */}
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex items-center bg-cyan-950 border-2 border-cyan-400 text-white rounded px-1.5 py-0.5 shadow-lg shadow-cyan-950 font-bold text-xs">
-            {vertSpeed >= 0 ? (
-              <ArrowUpRight size={10} className="mr-1 text-green-400" />
-            ) : (
-              <ArrowDownRight size={10} className="mr-1 text-red-400" />
-            )}
-            {vertSpeed.toFixed(1)}
+          {/* VS value */}
+          <div
+            className={`pfd-badge text-center mx-1 mb-1 py-0.5 rounded-sm flex items-center justify-center gap-0.5 ${Math.abs(vertSpeed) > 2 ? "pfd-badge-warn" : ""}`}
+            style={{ fontSize: "10px", fontWeight: "900", color: vertSpeed > 0 ? "#86efac" : vertSpeed < 0 ? "#fca5a5" : "#fff" }}
+          >
+            <span style={{ fontSize: "7px" }}>{vertSpeed > 0 ? "▲" : vertSpeed < 0 ? "▼" : "●"}</span>
+            {Math.abs(vertSpeed).toFixed(1)}
           </div>
         </div>
       </div>
 
-      {/* Sliding Compass at the bottom */}
-      <div className="h-10 sm:h-14 border-t border-cyan-800/30 mt-1 sm:mt-2 pt-1 sm:pt-2 flex flex-col items-center justify-between min-h-0 relative select-none">
-        
-        {/* Sliding compass container */}
-        <div className="w-full h-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-slate-950 z-10 pointer-events-none" />
-          <div className="w-full h-full relative">
-            {headingTicks.map((tick, i) => (
-              <div 
+      {/* ── COMPASS TAPE ──────────────────────────────────────── */}
+      <div className="pfd-sep-t shrink-0">
+        <div className="relative mx-2 mb-2" style={{ height: "44px" }}>
+          {/* edge fades */}
+          <div className="absolute inset-0 pointer-events-none z-20" style={{ background: "linear-gradient(to right, rgba(8,10,14,1) 0%, transparent 14%, transparent 86%, rgba(8,10,14,1) 100%)" }} />
+
+          <div className="absolute inset-0 overflow-hidden">
+            {compassTicks.map((tick, i) => (
+              <div
                 key={i}
-                className="absolute top-0 flex flex-col items-center transition-all duration-75"
-                style={{ left: `${tick.offsetPct}%`, transform: 'translateX(-50%)' }}
+                className="absolute top-0 flex flex-col items-center"
+                style={{ left: `${tick.off}%`, transform: "translateX(-50%)", paddingTop: "3px" }}
               >
-                <span className={`text-[9px] font-bold mb-1 ${tick.isMajor ? 'text-cyan-300' : 'text-cyan-500/50'}`}>
-                  {tick.label || '·'}
-                </span>
-                <div className={`w-[1px] bg-cyan-400 ${tick.isMajor ? 'h-3' : 'h-1.5'}`} />
+                <div style={{
+                  width: tick.maj ? "1.5px" : tick.mid ? "1px" : "0.5px",
+                  height: tick.maj ? "12px" : tick.mid ? "7px" : "4px",
+                  background: tick.maj ? W70 : tick.mid ? W45 : W25,
+                }} />
+                {tick.maj && (
+                  <span style={{ fontSize: "8px", fontWeight: "700", color: W70, marginTop: "2px", letterSpacing: "0.04em", lineHeight: 1 }}>
+                    {tick.label}
+                  </span>
+                )}
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Center Heading Indicator & digital readout */}
-        <div className="absolute top-[-2px] left-1/2 -translate-x-1/2 flex flex-col items-center z-20 pointer-events-none">
-          <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-b-[5px] border-b-cyan-400 mb-0.5" />
-          <div className="bg-cyan-950 border border-cyan-400 text-cyan-300 px-2.5 py-0.5 rounded text-[11px] font-bold shadow-md shadow-cyan-950/50 flex items-center gap-1.5">
-            <Compass size={11} className="text-cyan-400" />
-            {String(normalizedHdg).padStart(3, "0")}°
+          {/* Center readout */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center z-30 pointer-events-none">
+            <div style={{ width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `6px solid rgba(255,255,255,0.7)` }} />
+            <div
+              className="pfd-badge flex items-center gap-1 px-3 py-0.5 rounded-sm font-bold"
+              style={{ fontSize: "13px", color: "#fff", letterSpacing: "0.12em" }}
+            >
+              {String(normalizedHdg).padStart(3, "0")}°
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Controls (demo mode only) */}
-      {!hideControls && isDemo && (
-        <div className="mt-3 pt-3 border-t border-cyan-800/20 flex flex-wrap gap-4 justify-center text-[10px] text-cyan-500/80 bg-cyan-950/20 p-2 rounded-lg">
-          <label className="flex flex-col gap-1">
-            Heading
-            <input
-              type="range"
-              min={0}
-              max={359}
-              value={demoHeading}
-              onChange={(e) => setDemoHeading(Number(e.target.value))}
-              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            Depth
-            <input
-              type="range"
-              min={0}
-              max={50}
-              step={0.1}
-              value={demoDepth}
-              onChange={(e) => setDemoDepth(Number(e.target.value))}
-              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            Pitch
-            <input
-              type="range"
-              min={-30}
-              max={30}
-              step={0.5}
-              value={demoPitch}
-              onChange={(e) => setDemoPitch(Number(e.target.value))}
-              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            Roll
-            <input
-              type="range"
-              min={-45}
-              max={45}
-              step={0.5}
-              value={demoRoll}
-              onChange={(e) => setDemoRoll(Number(e.target.value))}
-              className="accent-cyan-500 w-24 h-1 bg-cyan-950 rounded"
-            />
-          </label>
-        </div>
-      )}
     </div>
   );
 }
