@@ -600,20 +600,20 @@ const SubmarineDashboard = () => {
   // --- UI SIMULATION EFFECT (Adds "life" to the dashboard) ---
   useEffect(() => {
     const interval = setInterval(() => {
-        // Add some noise to sensors to make UI look alive
-        setSignalStrength(prev => Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 5)));
-        if (!isCalibrating) {
-          setHeading(prev => (prev + (Math.random() - 0.5) * 2) % 360);
-          setPitch(prev => prev + (Math.random() - 0.5) * 1);
-          setRoll(prev => prev + (Math.random() - 0.5) * 1);
+        // Only animate IMU noise when device is connected
+        if (isUsbConnected) {
+          setSignalStrength(prev => Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 5)));
+          if (!isCalibrating) {
+            setHeading(prev => (prev + (Math.random() - 0.5) * 2) % 360);
+            setPitch(prev => prev + (Math.random() - 0.5) * 1);
+            setRoll(prev => prev + (Math.random() - 0.5) * 1);
+          }
+          setDepth(prev => Math.max(0, prev + (Math.random() - 0.5) * 0.1));
         }
 
-        // Minor fluctuations in telemetry
-        setDepth(prev => Math.max(0, prev + (Math.random() - 0.5) * 0.1));
-
-        let targetRpm = driveMode === 'stopped' ? 0 : Math.max(0, throttleLimit * 210); // Max 21000 RPM
-        let targetSpeed = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 7.5; // max 7.5 knots
-        let targetAmps = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 12;
+        let targetRpm   = driveMode === 'stopped' ? 0 : Math.max(0, throttleLimit * 210);
+        let targetSpeed = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 7.5;
+        let targetAmps  = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 12;
 
         setRpm(prev => prev + (targetRpm - prev) * 0.2 + (driveMode !== 'stopped' ? (Math.random() - 0.5) * 50 : 0));
         setAmps(prev => prev + (targetAmps - prev) * 0.2 + (Math.random() - 0.5) * 0.5);
@@ -625,7 +625,7 @@ const SubmarineDashboard = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [throttleLimit, driveMode, isCalibrating]);
+  }, [throttleLimit, driveMode, isCalibrating, isUsbConnected]);
 
   // Derive battery percentage from voltage (12.6V = 100%, 10.5V = 0%)
   const batteryPct = Math.round(Math.max(0, Math.min(100, ((batteryVolt - 10.5) / (12.6 - 10.5)) * 100)));
@@ -677,6 +677,7 @@ const SubmarineDashboard = () => {
             depth={depth}
             amps={amps}
             temp={temp}
+            isConnected={isUsbConnected}
         />
 
         <ControlPanel
