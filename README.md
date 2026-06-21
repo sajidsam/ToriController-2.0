@@ -1,4 +1,4 @@
-# 🌐 ToriController 2.0
+#  ToriController 2.0
 
 > Next-Generation Robotic Submarine Control Dashboard & Pilot Telemetry Station.
 
@@ -6,13 +6,13 @@ ToriController 2.0 is an advanced, high-tech desktop control interface built wit
 
 ---
 
-## 📸 Dashboard Interface
+##  Dashboard Interface
 
 ![ToriController Dashboard](./public/ToriController.png)
 
 ---
 
-## ✨ Core Features
+##  Core Features
 
 *   **⚡ Primary Flight Display (PFD):** Canvas-based artificial horizon indicating real-time submarine **Pitch**, **Roll**, and **Heading (Yaw)**. Includes vertical indicator tapes for tracking depth relative to limits.
 *   **📡 Tactical Sonar Radar:** A sweeping polar radar interface visualizing surrounding target vectors, complete with adjustable gain, multi-range sweeps (2m - 50m), and operating modes (*Search*, *Track*, *Stabilized*).
@@ -23,7 +23,7 @@ ToriController 2.0 is an advanced, high-tech desktop control interface built wit
 
 ---
 
-## ⌨️ Pilot Key Bindings
+##  Pilot Key Bindings
 
 Pilots can maneuver the submarine using standard keyboard shortcuts:
 
@@ -41,7 +41,7 @@ Pilots can maneuver the submarine using standard keyboard shortcuts:
 
 ---
 
-## 📡 Serial Communication Protocol
+##  Serial Communication Protocol
 
 ToriController communicates with onboard MCUs (such as ESP32 or Arduino) using a structured ASCII-based line-terminated protocol over 115200 baud rate.
 
@@ -70,7 +70,7 @@ Onboard systems stream sensor sentences as line-terminated text:
 
 ---
 
-## 📂 Project Architecture
+##  Project Architecture
 
 ```markdown
 ├── electron/
@@ -94,13 +94,13 @@ Onboard systems stream sensor sentences as line-terminated text:
 
 ---
 
-## 🛠️ Installation & Getting Started
+##  Installation & Getting Started
 
-### 📋 Prerequisites
+###  Prerequisites
 *   [Node.js](https://nodejs.org/) (v18.x or later recommended)
 *   [npm](https://www.npmjs.com/)
 
-### 🚀 Running the App
+###  Running the App
 1.  **Clone the repository:**
     ```bash
     git clone https://github.com/your-username/ToriController-2.0.git
@@ -120,7 +120,7 @@ Onboard systems stream sensor sentences as line-terminated text:
     npm run dev
     ```
 
-### 📦 Production Build & Packaging
+###  Production Build & Packaging
 To compile the React production code and pack the app into a native desktop installer (`.dmg` on macOS, `.exe` on Windows, or `.AppImage` on Linux):
 ```bash
 npm run dist
@@ -129,5 +129,5 @@ Build outputs will be generated inside the `dist-electron` folder.
 
 ---
 
-## 🛡️ License
+##  License
 Distributed under the MIT License. See `LICENSE` for more information.
