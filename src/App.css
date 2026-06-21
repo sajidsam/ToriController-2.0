@@ -148,17 +148,21 @@
 @media (min-width: 640px) {
   .main-center-grid {
     gap: 1rem; /* gap-4 */
+    grid-template-columns: minmax(300px, 4fr) minmax(80px, 1fr) 320px;
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas:
+      "camera  camera  radar"
+      "pfd     indicators radar";
   }
 }
 
 @media (min-width: 1024px) { /* lg breakpoint */
   .main-center-grid {
-    grid-template-columns: 1fr 320px;
-    grid-template-rows: 1fr 1fr auto;
+    grid-template-columns: minmax(320px, 4fr) minmax(90px, 1fr) 320px;
+    grid-template-rows: 1fr 1fr;
     grid-template-areas:
-      "camera radar"
-      "pfd    radar"
-      "indicators indicators";
+      "camera  camera  radar"
+      "pfd     indicators radar";
   }
 }
 
@@ -170,6 +174,12 @@
 
 .grid-area-pfd {
   grid-area: pfd;
+}
+
+@media (min-width: 1024px) {
+  .grid-area-pfd {
+    max-width: 100%;
+  }
 }
 
 .grid-area-camera {
