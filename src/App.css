@@ -153,17 +153,18 @@
 
 @media (min-width: 1024px) { /* lg breakpoint */
   .main-center-grid {
-    grid-template-columns: 1fr 1fr 280px;
-    grid-template-rows: 1fr auto;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: 1fr 1fr auto;
     grid-template-areas:
-      "pfd camera radar"
-      "indicators indicators radar";
+      "camera radar"
+      "pfd    radar"
+      "indicators indicators";
   }
 }
 
 @media (min-width: 1280px) { /* xl breakpoint */
   .main-center-grid {
-    grid-template-columns: 1fr 1fr 340px;
+    grid-template-columns: 1fr 360px;
   }
 }
 
