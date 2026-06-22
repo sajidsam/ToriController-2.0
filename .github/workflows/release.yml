@@ -28,7 +28,9 @@ jobs:
         run: npm ci
 
       - name: Build and Package Electron App
-        run: npm run dist
+        run: |
+          npm run build
+          npx electron-builder --publish never
         env:
           # Disable automatic code signing search to build unsigned DMG/EXE successfully
           CSC_IDENTITY_AUTO_DISCOVERY: false
