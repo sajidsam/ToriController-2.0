@@ -58,7 +58,7 @@ const TopNavBar = ({ signalStrength, batteryVolt, batteryPct, isLeaking, ipAddre
             {(isUsbConnected || signalStrength > 0) && (
               <button
                   onClick={calibrateGyro}
-                  className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-cyan-500/50 text-cyan-400 hover:bg-cyan-950/20"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-white/50 text-white hover:bg-white/10"
                   title="Calibrate Gyroscope"
               >
                   <Compass size={14} />
