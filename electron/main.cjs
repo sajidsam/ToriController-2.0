@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 
 // Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
@@ -90,6 +90,10 @@ ipcMain.on("maximize", () => {
 });
 
 ipcMain.on("close", () => win.close());
+
+ipcMain.on("open-external", (event, url) => {
+  shell.openExternal(url);
+});
 
 app.whenReady().then(createWindow);
 

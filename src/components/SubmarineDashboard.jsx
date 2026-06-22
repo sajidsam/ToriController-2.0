@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, Download } from 'lucide-react';
 import TopNavBar from './TopNavBar';
 import TelemetryPanel from './TelemetryPanel';
 import ControlPanel from './ControlPanel';
@@ -118,6 +118,56 @@ const SubmarineDashboard = () => {
     };
     console.log("IMU Calibration countdown started...");
   };
+
+  // --- CI/CD AUTO-UPDATE NOTIFIER ---
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [latestVersion, setLatestVersion] = useState('');
+  const [releaseUrl, setReleaseUrl] = useState('');
+
+  useEffect(() => {
+    const checkUpdate = async () => {
+      try {
+        const response = await fetch('https://api.github.com/repos/sifat-99/ToriController-2.0/releases/latest');
+        if (!response.ok) return;
+        const data = await response.json();
+        const latest = data.tag_name; // e.g. "v2.0.2" or "2.0.2"
+        if (!latest) return;
+        
+        // Clean v prefix if present
+        const cleanLatest = latest.replace(/^v/, '');
+        const cleanCurrent = '2.0.1'; // Matches package.json
+        
+        if (cleanLatest !== cleanCurrent) {
+          const latestParts = cleanLatest.split('.').map(Number);
+          const currentParts = cleanCurrent.split('.').map(Number);
+          
+          let isNewer = false;
+          for (let i = 0; i < 3; i++) {
+            const lPart = latestParts[i] || 0;
+            const cPart = currentParts[i] || 0;
+            if (lPart > cPart) {
+              isNewer = true;
+              break;
+            } else if (lPart < cPart) {
+              break;
+            }
+          }
+          
+          if (isNewer) {
+            setLatestVersion(latest);
+            setReleaseUrl(data.html_url || 'https://github.com/sifat-99/ToriController-2.0/releases');
+            setUpdateAvailable(true);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to check for updates:", err);
+      }
+    };
+    
+    // Check after 2 seconds to not block main thread startup rendering
+    const timer = setTimeout(checkUpdate, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!isCalibrating) return;
@@ -839,6 +889,53 @@ const SubmarineDashboard = () => {
                 className="flex-1 bg-white/10 hover:bg-white/20 text-white font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider border border-white/10"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Available Modal Overlay */}
+      {updateAvailable && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center text-white select-none">
+          <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-sm w-full shadow-2xl text-center gap-4 ring-1 ring-white/10 mx-4">
+            <div className="relative w-16 h-16 flex items-center justify-center mx-auto bg-white/5 rounded-full border border-white/20">
+              <Download size={28} className="text-white animate-bounce" />
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase border-b border-white/10 pb-2">
+                UPDATE AVAILABLE
+              </h3>
+              <p className="text-xs text-white/80 mt-2">
+                A new version of ToriController is available.
+              </p>
+              <div className="flex justify-center gap-4 text-[11px] font-mono mt-2 bg-white/5 border border-white/10 py-1.5 px-3 rounded">
+                <span>CURRENT: <span className="font-bold">v2.0.1</span></span>
+                <span className="text-white/40">|</span>
+                <span>LATEST: <span className="font-bold">{latestVersion}</span></span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-2">
+              <button
+                onClick={() => {
+                  if (window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal(releaseUrl);
+                  } else {
+                    window.open(releaseUrl, '_blank');
+                  }
+                  setUpdateAvailable(false);
+                }}
+                className="w-full bg-white text-black hover:bg-white/90 font-mono font-bold py-2.5 px-3 rounded text-xs transition uppercase tracking-wider flex items-center justify-center gap-1.5"
+              >
+                <Download size={14} /> Download Update
+              </button>
+              <button
+                onClick={() => setUpdateAvailable(false)}
+                className="w-full bg-white/10 hover:bg-white/20 text-white font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider border border-white/10"
+              >
+                Later
               </button>
             </div>
           </div>

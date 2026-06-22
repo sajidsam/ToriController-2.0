@@ -4,5 +4,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimize: () => ipcRenderer.send("minimize"),
   maximize: () => ipcRenderer.send("maximize"),
   close: () => ipcRenderer.send("close"),
-  platform: process.platform
+  platform: process.platform,
+  openExternal: (url) => ipcRenderer.send("open-external", url)
 });
