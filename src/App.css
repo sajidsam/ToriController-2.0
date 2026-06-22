@@ -2,7 +2,11 @@
   --throttle-height: 24rem; /* 384px */
   --throttle-width: 7rem;  /* 112px */
   --throttle-handle-offset: 1.5rem;
-  --horizon-ball-size: 11rem; /* 176px (w-44 h-44) */
+  --horizon-ball-size: 12.5rem; /* 200px */
+  --pfd-val-font-size: 15px;
+  --pfd-lbl-font-size: 8px;
+  --pfd-telemetry-gap: 0.5rem;
+  --pfd-telemetry-width: 72px;
 }
 
 /* Height based scaling */
@@ -11,7 +15,11 @@
     --throttle-height: 15rem; /* 240px */
     --throttle-width: 6rem;   /* 96px */
     --throttle-handle-offset: 1.25rem;
-    --horizon-ball-size: 8.5rem; /* 136px (w-34 h-34) */
+    --horizon-ball-size: 10rem; /* 160px */
+    --pfd-val-font-size: 12px;
+    --pfd-lbl-font-size: 7px;
+    --pfd-telemetry-gap: 0.35rem;
+    --pfd-telemetry-width: 60px;
   }
   .pfd-container {
     padding: 0.375rem !important; /* p-1.5 */
@@ -54,7 +62,11 @@
     --throttle-height: 9.5rem; /* 152px */
     --throttle-width: 4.5rem;  /* 72px */
     --throttle-handle-offset: 0.75rem;
-    --horizon-ball-size: 6.5rem; /* 104px (w-26 h-26) */
+    --horizon-ball-size: 7.5rem; /* 120px */
+    --pfd-val-font-size: 10px;
+    --pfd-lbl-font-size: 6px;
+    --pfd-telemetry-gap: 0.25rem;
+    --pfd-telemetry-width: 48px;
   }
   .pfd-container {
     padding: 0.25rem !important; /* p-1 */
@@ -141,34 +153,34 @@
   grid-template-areas:
     "pfd"
     "camera"
-    "indicators"
+    "dbl"
     "radar";
 }
 
 @media (min-width: 640px) {
   .main-center-grid {
     gap: 1rem; /* gap-4 */
-    grid-template-columns: minmax(300px, 4fr) minmax(80px, 1fr) 320px;
+    grid-template-columns: minmax(280px, 7fr) minmax(160px, 3fr) 320px;
     grid-template-rows: 1fr 1fr;
     grid-template-areas:
       "camera  camera  radar"
-      "pfd     indicators radar";
+      "pfd     dbl     radar";
   }
 }
 
 @media (min-width: 1024px) { /* lg breakpoint */
   .main-center-grid {
-    grid-template-columns: minmax(320px, 4fr) minmax(90px, 1fr) 320px;
+    grid-template-columns: minmax(300px, 7fr) minmax(180px, 3fr) 320px;
     grid-template-rows: 1fr 1fr;
     grid-template-areas:
       "camera  camera  radar"
-      "pfd     indicators radar";
+      "pfd     dbl     radar";
   }
 }
 
 @media (min-width: 1280px) { /* xl breakpoint */
   .main-center-grid {
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: minmax(340px, 7fr) minmax(220px, 3fr) 340px;
   }
 }
 
@@ -186,8 +198,8 @@
   grid-area: camera;
 }
 
-.grid-area-indicators {
-  grid-area: indicators;
+.grid-area-dbl {
+  grid-area: dbl;
 }
 
 .grid-area-radar {

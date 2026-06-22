@@ -9,19 +9,7 @@ const TitleBar = () => {
   const handleMaximize = () => window.electronAPI?.maximize();
   const handleClose = () => window.electronAPI?.close();
 
-  const macControls = (
-    <div className="flex gap-2" style={{ WebkitAppRegion: 'no-drag' }}>
-      <button onClick={handleClose} className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center group focus:outline-none">
-         <span className="opacity-0 group-hover:opacity-100 text-[8px] leading-none text-red-900 font-bold mb-[1px]">x</span>
-      </button>
-      <button onClick={handleMinimize} className="w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 flex items-center justify-center group focus:outline-none">
-         <span className="opacity-0 group-hover:opacity-100 text-[8px] leading-none text-yellow-900 font-bold mb-[1px]">-</span>
-      </button>
-      <button onClick={handleMaximize} className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center group focus:outline-none">
-         <span className="opacity-0 group-hover:opacity-100 text-[8px] leading-none text-green-900 font-bold mb-[1px]">+</span>
-      </button>
-    </div>
-  );
+
 
   const winControls = (
     <div className="flex h-full" style={{ WebkitAppRegion: 'no-drag' }}>
@@ -40,7 +28,7 @@ const TitleBar = () => {
   return (
     <div className="h-9 w-full flex items-center justify-between bg-black text-white select-none border-b border-white/20 relative" style={{ WebkitAppRegion: 'drag' }}>
 
-      {isMac && <div className="pl-4">{macControls}</div>}
+      {isMac && <div className="w-[75px]" />}
 
       {/* App Title & Logo */}
       <div className={`flex items-center gap-2 ${isMac ? 'absolute left-1/2 -translate-x-1/2' : 'pl-3'}`}>
