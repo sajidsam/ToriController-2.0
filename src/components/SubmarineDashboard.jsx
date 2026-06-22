@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Globe } from 'lucide-react';
 import TopNavBar from './TopNavBar';
 import TelemetryPanel from './TelemetryPanel';
 import ControlPanel from './ControlPanel';
@@ -234,6 +235,21 @@ const SubmarineDashboard = () => {
   const [isUsbConnected, setIsUsbConnected] = useState(false);
   const [showUsbPortSelector, setShowUsbPortSelector] = useState(false);
   const [pairedPorts, setPairedPorts] = useState([]);
+  const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [modalIp, setModalIp] = useState('');
+  const [modalCameraUrl, setModalCameraUrl] = useState('');
+
+  const openNetworkModal = () => {
+    setModalIp(ipAddress);
+    setModalCameraUrl(cameraUrl);
+    setShowNetworkModal(true);
+  };
+
+  const saveNetworkModal = () => {
+    setIpAddress(modalIp);
+    setCameraUrl(modalCameraUrl);
+    setShowNetworkModal(false);
+  };
 
   // Refs for persistent connection state
   const serialWriterRef = useRef(null);
@@ -643,10 +659,9 @@ const SubmarineDashboard = () => {
         batteryVolt={batteryVolt}
         batteryPct={batteryPct}
         isLeaking={isLeaking}
-        ipAddress={ipAddress} setIpAddress={setIpAddress}
-        cameraUrl={cameraUrl} setCameraUrl={setCameraUrl}
         isUsbConnected={isUsbConnected} connectUsb={connectUsb}
         calibrateGyro={startCalibration}
+        onOpenNetworkSettings={openNetworkModal}
       />
 
       <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
@@ -711,14 +726,14 @@ const SubmarineDashboard = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-white select-none">
           <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col items-center justify-center max-w-sm w-full shadow-2xl text-center gap-4 ring-1 ring-white/10">
             <div className="relative w-20 h-20 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full border-4 border-t-cyan-500 border-r-cyan-500/20 border-b-cyan-500/20 border-l-cyan-500 animate-spin"></div>
-              <span className="text-xl font-bold font-mono text-cyan-400 z-10">{calibrationTimeLeft}s</span>
+              <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-white/20 border-b-white/20 border-l-white animate-spin"></div>
+              <span className="text-xl font-bold font-mono text-white z-10">{calibrationTimeLeft}s</span>
             </div>
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-mono tracking-widest text-cyan-400 uppercase animate-pulse">IMU Calibration</h3>
-              <p className="text-xs text-white/60">Hold submarine level in the flat 0° reference position.</p>
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase animate-pulse">IMU Calibration</h3>
+              <p className="text-xs text-white/80">Hold submarine level in the flat 0° reference position.</p>
             </div>
-            <div className="w-full bg-white/5 border border-white/10 p-3 rounded font-mono text-xs text-left text-white/50 flex flex-col gap-1.5">
+            <div className="w-full bg-white/5 border border-white/10 p-3 rounded font-mono text-xs text-left text-white/80 flex flex-col gap-1.5">
               <div className="flex justify-between"><span>RAW PITCH:</span><span className="text-white font-bold">{pitch > 0 ? '+' : ''}{pitch.toFixed(1)}°</span></div>
               <div className="flex justify-between"><span>RAW ROLL:</span><span className="text-white font-bold">{roll > 0 ? '+' : ''}{roll.toFixed(1)}°</span></div>
               <div className="flex justify-between"><span>RAW YAW:</span><span className="text-white font-bold">{heading.toFixed(0)}°</span></div>
@@ -732,8 +747,8 @@ const SubmarineDashboard = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center text-white select-none">
           <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-md w-full shadow-2xl gap-4 ring-1 ring-white/10 mx-4">
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-mono tracking-widest text-cyan-400 uppercase">Select USB Serial Port</h3>
-              <p className="text-xs text-white/60">Choose a previously approved device or authorize a new one.</p>
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase">Select USB Serial Port</h3>
+              <p className="text-xs text-white/80">Choose a previously approved device or authorize a new one.</p>
             </div>
             
             <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
@@ -745,15 +760,15 @@ const SubmarineDashboard = () => {
                     <button
                       key={idx}
                       onClick={() => startPortConnection(port)}
-                      className="w-full text-left bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/50 p-2.5 rounded font-mono text-xs transition flex justify-between items-center group"
+                      className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/40 p-2.5 rounded font-mono text-xs transition flex justify-between items-center group"
                     >
-                      <span className="truncate pr-2 group-hover:text-cyan-300">{name}</span>
-                      <span className="text-[10px] text-cyan-400 font-bold bg-cyan-950/50 border border-cyan-800/30 px-1.5 py-0.5 rounded shrink-0">CONNECT</span>
+                      <span className="truncate pr-2 group-hover:text-white">{name}</span>
+                      <span className="text-[10px] text-white font-bold bg-white/20 border border-white/30 px-1.5 py-0.5 rounded shrink-0">CONNECT</span>
                     </button>
                   );
                 })
               ) : (
-                <div className="text-center py-4 text-xs text-white/40 border border-dashed border-white/10 rounded font-mono">
+                <div className="text-center py-4 text-xs text-white/70 border border-dashed border-white/10 rounded font-mono">
                   No previously authorized USB ports found.
                 </div>
               )}
@@ -762,13 +777,66 @@ const SubmarineDashboard = () => {
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
               <button
                 onClick={requestNewUsbPort}
-                className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-3 rounded text-xs transition font-mono uppercase tracking-wider"
+                className="flex-1 bg-white hover:bg-white/90 text-black font-bold py-2 px-3 rounded text-xs transition font-mono uppercase tracking-wider"
               >
                 Pair New Device...
               </button>
               <button
                 onClick={() => setShowUsbPortSelector(false)}
                 className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded text-xs transition font-mono uppercase tracking-wider border border-white/10"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Network Configuration Modal Overlay */}
+      {showNetworkModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center text-white select-none">
+          <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-md w-full shadow-2xl gap-4 ring-1 ring-white/10 mx-4">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase border-b border-white/20 pb-2 flex items-center gap-2">
+                <Globe size={18} /> NETWORK CONFIG
+              </h3>
+              <p className="text-[11px] text-white/80 mt-1">Configure ESP32 controller connection and video source stream links.</p>
+            </div>
+
+            <div className="flex flex-col gap-3 font-mono text-xs text-left">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">ESP32 IP Address</label>
+                <input
+                  type="text"
+                  value={modalIp}
+                  onChange={(e) => setModalIp(e.target.value)}
+                  className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                  placeholder="192.168.x.x"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Camera Stream URL</label>
+                <input
+                  type="text"
+                  value={modalCameraUrl}
+                  onChange={(e) => setModalCameraUrl(e.target.value)}
+                  className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                  placeholder="http://192.168.x.x:8080/video"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              <button
+                onClick={saveNetworkModal}
+                className="flex-1 bg-white text-black hover:bg-white/90 font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider"
+              >
+                Save Config
+              </button>
+              <button
+                onClick={() => setShowNetworkModal(false)}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider border border-white/10"
               >
                 Cancel
               </button>

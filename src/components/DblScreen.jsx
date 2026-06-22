@@ -6,7 +6,12 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
   const [altitude, setAltitude] = useState(15.4);
   const [linkQuality, setLinkQuality] = useState(98);
   const [dbm, setDbm] = useState(-62);
-  const terrainPointsRef = useRef(Array.from({ length: 40 }, (_, i) => 80 + Math.sin(i * 0.3) * 15 + Math.cos(i * 0.7) * 8));
+  const terrainPointsRef = useRef(
+    Array.from(
+      { length: 40 },
+      (_, i) => 80 + Math.sin(i * 0.3) * 15 + Math.cos(i * 0.7) * 8,
+    ),
+  );
 
   // Update mock bottom altitude and terrain scrolling
   useEffect(() => {
@@ -15,13 +20,25 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
       const noise = (Math.random() - 0.5) * 0.15;
       setAltitude(parseFloat((baseAlti + noise).toFixed(2)));
 
-      setLinkQuality(q => Math.max(85, Math.min(100, q + (Math.random() - 0.5) * 2)));
-      setDbm(d => Math.max(-80, Math.min(-50, d + (Math.random() - 0.5) * 3)));
+      setLinkQuality((q) =>
+        Math.max(85, Math.min(100, q + (Math.random() - 0.5) * 2)),
+      );
+      setDbm((d) =>
+        Math.max(-80, Math.min(-50, d + (Math.random() - 0.5) * 3)),
+      );
 
       const points = terrainPointsRef.current;
       points.shift();
       const lastPoint = points[points.length - 1];
-      const nextPoint = Math.max(40, Math.min(130, lastPoint + (Math.random() - 0.5) * 6 + Math.sin(Date.now() / 2000) * 2));
+      const nextPoint = Math.max(
+        40,
+        Math.min(
+          130,
+          lastPoint +
+            (Math.random() - 0.5) * 6 +
+            Math.sin(Date.now() / 2000) * 2,
+        ),
+      );
       points.push(nextPoint);
     }, 100);
 
@@ -34,8 +51,8 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    const width = canvas.width = canvas.clientWidth;
-    const height = canvas.height = canvas.clientHeight;
+    const width = (canvas.width = canvas.clientWidth);
+    const height = (canvas.height = canvas.clientHeight);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -86,7 +103,8 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
     const subY = height * 0.35;
 
     // Pulse sensor beam to bottom (Monochrome)
-    const terrainHeightAtSub = height - (points[Math.floor(points.length * 0.25)] * height) / 160;
+    const terrainHeightAtSub =
+      height - (points[Math.floor(points.length * 0.25)] * height) / 160;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
     ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 3]);
@@ -111,26 +129,26 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
   }, [altitude]);
 
   return (
-    <div className="w-full h-full flex flex-col select-none relative p-3 text-white"
-         style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-      
+    <div
+      className="w-full h-full flex flex-col select-none relative p-3 text-white"
+      style={{ fontFamily: "'Share Tech Mono', monospace" }}
+    >
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-        <span className="text-[10px] font-bold tracking-widest text-white/70 flex items-center gap-1">
+      <div className="flex items-center justify-between border-b border-white/15 pb-2 mb-2">
+        <span className="text-[10px] font-bold tracking-widest text-white flex items-center gap-1">
           <Radio size={12} className="animate-pulse" /> DBL PILOT SCREEN
         </span>
-        <span className="text-[8px] bg-white/10 text-white/90 border border-white/20 px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
+        <span className="text-[8px] bg-white/20 text-white border border-white/40 px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
           Link: Active
         </span>
       </div>
 
       {/* BODY GRID */}
       <div className="flex-1 flex flex-col gap-2.5 min-h-0">
-        
         {/* ALTITUDE & LINK METRICS */}
         <div className="grid grid-cols-2 gap-2 shrink-0">
           <div className="bg-white/5 border border-white/10 rounded p-1.5 flex flex-col items-center">
-            <span className="text-[6.5px] text-white/50 tracking-wider uppercase font-bold flex items-center gap-0.5">
+            <span className="text-[6.5px] text-white/80 tracking-wider uppercase font-bold flex items-center gap-0.5">
               <ArrowDown size={8} /> Altitude
             </span>
             <span className="text-sm sm:text-base font-bold font-mono text-white mt-0.5">
@@ -139,7 +157,7 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded p-1.5 flex flex-col items-center">
-            <span className="text-[6.5px] text-white/50 tracking-wider uppercase font-bold flex items-center gap-0.5">
+            <span className="text-[6.5px] text-white/80 tracking-wider uppercase font-bold flex items-center gap-0.5">
               <Link2 size={8} /> Signal
             </span>
             <span className="text-sm sm:text-base font-bold font-mono text-white mt-0.5">
@@ -150,7 +168,7 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
 
         {/* BOTTOM PROFILE TERRAIN */}
         <div className="flex-1 min-h-[90px] border border-white/15 bg-black/60 rounded overflow-hidden relative flex flex-col">
-          <div className="absolute top-1 left-2 text-[5.5px] text-white/30 font-bold uppercase tracking-widest z-10">
+          <div className="absolute top-1 left-2 text-[5.5px] text-white/60 font-bold uppercase tracking-widest z-10">
             Bottom Topography profile
           </div>
           <canvas ref={canvasRef} className="flex-1 w-full h-full" />
@@ -158,21 +176,23 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
 
         {/* LOG SYSTEM METRICS */}
         <div className="bg-white/5 border border-white/10 rounded p-2 flex flex-col gap-1.5 shrink-0">
-          <span className="text-[6px] text-white/40 tracking-wider uppercase font-bold border-b border-white/5 pb-0.5 flex items-center gap-1">
+          <span className="text-[6px] text-white/70 tracking-wider uppercase font-bold border-b border-white/10 pb-0.5 flex items-center gap-1">
             <Activity size={8} /> Telemetry Logger
           </span>
-          
+
           <div className="flex justify-between items-center text-[7.5px] font-mono leading-none">
-            <span className="text-white/60">LINK QUALITY</span>
-            <span className="text-white font-bold">{linkQuality.toFixed(0)}%</span>
+            <span className="text-white/80 font-bold">LINK QUALITY</span>
+            <span className="text-white font-bold">
+              {linkQuality.toFixed(0)}%
+            </span>
           </div>
           <div className="flex justify-between items-center text-[7.5px] font-mono leading-none">
-            <span className="text-white/60">RATE LIMIT</span>
-            <span className="text-white">42 kbps</span>
+            <span className="text-white/80 font-bold">RATE LIMIT</span>
+            <span className="text-white font-bold">42 kbps</span>
           </div>
           <div className="flex justify-between items-center text-[7.5px] font-mono leading-none">
-            <span className="text-white/60">TEMP ALARM</span>
-            <span className="text-white">
+            <span className="text-white/80 font-bold">TEMP ALARM</span>
+            <span className="text-white font-bold">
               {temp > 50 ? "WARNING" : "NORMAL"}
             </span>
           </div>

@@ -16,7 +16,7 @@ const RadarControls = ({
     <div className="flex flex-col gap-3 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg p-3 text-xs">
       {/* Mode Selection */}
       <div className="flex flex-col gap-2 border-b border-white/10 pb-2">
-        <label className="text-white/80 font-bold uppercase tracking-widest text-[10px]">
+        <label className="text-white font-bold uppercase tracking-widest text-[10px]">
           <Radio size={12} className="inline mr-1" /> Operating Mode
         </label>
         <div className="flex gap-1">
@@ -27,7 +27,7 @@ const RadarControls = ({
               className={`flex-1 py-1 px-2 rounded border text-[9px] font-mono font-bold transition-all ${
                 mode === m
                   ? 'bg-white/20 border-white/50 text-white shadow-lg shadow-white/20'
-                  : 'bg-black/40 border-white/10 text-white/50 hover:border-white/30'
+                  : 'bg-black/40 border-white/10 text-white/80 hover:border-white/30'
               }`}
             >
               {m}
@@ -39,7 +39,7 @@ const RadarControls = ({
       {/* Range Control */}
       <div className="flex flex-col gap-2 border-b border-white/10 pb-2">
         <div className="flex justify-between items-center">
-          <label className="text-white/80 font-bold uppercase tracking-widest text-[10px]">
+          <label className="text-white font-bold uppercase tracking-widest text-[10px]">
             <Volume2 size={12} className="inline mr-1" /> Range
           </label>
           <span className="bg-black/60 text-white/90 px-2 py-0.5 rounded border border-white/30 font-mono text-[9px] font-bold">
@@ -66,7 +66,7 @@ const RadarControls = ({
               className={`py-1 px-1 rounded border text-[8px] font-mono font-bold transition-all ${
                 Math.abs(range - r) < 0.5
                   ? 'bg-white/30 border-white/60 text-white'
-                  : 'bg-black/40 border-white/10 text-white/50 hover:border-white/30'
+                  : 'bg-black/40 border-white/10 text-white/80 hover:border-white/30'
               }`}
             >
               {r}
@@ -78,7 +78,7 @@ const RadarControls = ({
       {/* Gain Control */}
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
-          <label className="text-white/80 font-bold uppercase tracking-widest text-[10px]">
+          <label className="text-white font-bold uppercase tracking-widest text-[10px]">
             <Zap size={12} className="inline mr-1" /> Gain
           </label>
           <span className="bg-black/60 text-white/90 px-2 py-0.5 rounded border border-white/30 font-mono text-[9px] font-bold">
@@ -102,14 +102,14 @@ const RadarControls = ({
       {/* Status Indicators */}
       <div className="flex gap-2 bg-black/40 p-2 rounded border border-white/10">
         <div className="flex-1">
-          <div className="text-[8px] text-white/60 uppercase tracking-widest font-bold">Sonar</div>
+          <div className="text-[8px] text-white/85 uppercase tracking-widest font-bold">Sonar</div>
           <div className={`text-[10px] font-mono font-bold ${amps > 15 ? 'text-white' : 'text-white/80'}`}>
             {amps > 0 ? 'ACTIVE' : 'STANDBY'}
           </div>
         </div>
         <div className="w-px bg-white/20"></div>
         <div className="flex-1">
-          <div className="text-[8px] text-white/60 uppercase tracking-widest font-bold">Signal</div>
+          <div className="text-[8px] text-white/85 uppercase tracking-widest font-bold">Signal</div>
           <div className="text-[10px] font-mono font-bold text-white/90">GOOD</div>
         </div>
       </div>

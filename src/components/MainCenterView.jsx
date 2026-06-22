@@ -166,14 +166,14 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                     <div className="absolute top-4 left-4 flex gap-2 z-40">
                         <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
                         <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
-                        <span className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border ${aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : aiStatus === "SEARCHING" ? 'bg-white/10 text-white/50 border-white/20' : 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'}`}>
+                        <span className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border ${aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : aiStatus === "SEARCHING" ? 'bg-white/15 text-white/80 border-white/30' : 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'}`}>
                             AI: {aiStatus}
                         </span>
                     </div>
 
                     {!isImageLoaded && (
-                        <div className="text-white/50 flex flex-col items-center gap-2 absolute z-0 mt-32 w-full text-center select-none pointer-events-none">
-                            <span className="text-xs font-mono tracking-widest font-bold opacity-50">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
+                        <div className="text-white/85 flex flex-col items-center gap-2 absolute z-0 mt-32 w-full text-center select-none pointer-events-none">
+                            <span className="text-xs font-mono tracking-widest font-bold opacity-80">NO VIDEO SIGNAL - FALLBACK TO HUD</span>
                         </div>
                     )}
 

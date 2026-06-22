@@ -2,7 +2,7 @@
   --throttle-height: 24rem; /* 384px */
   --throttle-width: 7rem;  /* 112px */
   --throttle-handle-offset: 1.5rem;
-  --horizon-ball-size: 12.5rem; /* 200px */
+  --horizon-ball-size: 19.5rem; /* 280px */
   --pfd-val-font-size: 15px;
   --pfd-lbl-font-size: 8px;
   --pfd-telemetry-gap: 0.5rem;
@@ -15,7 +15,7 @@
     --throttle-height: 15rem; /* 240px */
     --throttle-width: 6rem;   /* 96px */
     --throttle-handle-offset: 1.25rem;
-    --horizon-ball-size: 10rem; /* 160px */
+    --horizon-ball-size: 17rem; /* 224px */
     --pfd-val-font-size: 12px;
     --pfd-lbl-font-size: 7px;
     --pfd-telemetry-gap: 0.35rem;
@@ -62,7 +62,7 @@
     --throttle-height: 9.5rem; /* 152px */
     --throttle-width: 4.5rem;  /* 72px */
     --throttle-handle-offset: 0.75rem;
-    --horizon-ball-size: 7.5rem; /* 120px */
+    --horizon-ball-size: 11rem; /* 176px */
     --pfd-val-font-size: 10px;
     --pfd-lbl-font-size: 6px;
     --pfd-telemetry-gap: 0.25rem;

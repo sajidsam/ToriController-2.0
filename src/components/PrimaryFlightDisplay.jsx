@@ -100,11 +100,11 @@ function PrimaryFlightDisplay({
   const pitchLadder = [-20, -15, -10, -5, 5, 10, 15, 20];
 
   /* ── Shared white color tokens ────────────────────────────── */
-  const W70 = "rgba(255,255,255,0.70)";
-  const W45 = "rgba(255,255,255,0.45)";
-  const W25 = "rgba(255,255,255,0.25)";
-  const W12 = "rgba(255,255,255,0.12)";
-  const W06 = "rgba(255,255,255,0.06)";
+  const W70 = "rgba(255,255,255,0.88)";
+  const W45 = "rgba(255,255,255,0.68)";
+  const W25 = "rgba(255,255,255,0.45)";
+  const W12 = "rgba(255,255,255,0.25)";
+  const W06 = "rgba(255,255,255,0.12)";
   const BG = "rgba(10,12,16,0.98)";
 
   return (
