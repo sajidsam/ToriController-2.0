@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   maximize: () => ipcRenderer.send("maximize"),
   close: () => ipcRenderer.send("close"),
   platform: process.platform,
-  openExternal: (url) => ipcRenderer.send("open-external", url)
+  openExternal: (url) => ipcRenderer.send("open-external", url),
+  scanWifi: () => ipcRenderer.invoke("scan-wifi")
 });

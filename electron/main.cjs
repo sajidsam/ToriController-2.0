@@ -1,5 +1,11 @@
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
+const wifi = require("node-wifi");
+
+// Initialize node-wifi
+wifi.init({
+  iface: null // network interface, choose a random one if null
+});
 
 // Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
 app.commandLine.appendSwitch('ignore-certificate-errors');
@@ -93,6 +99,58 @@ ipcMain.on("close", () => win.close());
 
 ipcMain.on("open-external", (event, url) => {
   shell.openExternal(url);
+});
+
+const { exec } = require("child_process");
+
+ipcMain.handle("scan-wifi", async () => {
+  try {
+    if (process.platform === "darwin") {
+      // macOS Sonoma/Sequoia removed 'airport', so we parse system_profiler
+      return await new Promise((resolve) => {
+        exec("system_profiler SPAirPortDataType", (err, stdout) => {
+          if (err) {
+            console.error("system_profiler error:", err);
+            return resolve([]);
+          }
+          
+          const networks = [];
+          const lines = stdout.split('\n');
+          let currentNetwork = null;
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check for SSID (typically 12 spaces indentation ending in colon)
+            const ssidMatch = line.match(/^ {12}([^:]+):$/);
+            if (ssidMatch && !line.includes("Current Network Information:") && !line.includes("Other Local Wi-Fi Networks:")) {
+              if (currentNetwork) networks.push(currentNetwork);
+              currentNetwork = { ssid: ssidMatch[1].trim(), signal_level: -99 };
+            } else if (currentNetwork) {
+              const signalMatch = line.match(/^\s+Signal \/ Noise: (-?\d+) dBm/);
+              if (signalMatch) {
+                currentNetwork.signal_level = parseInt(signalMatch[1], 10);
+              }
+              // Stop parsing networks when we hit another section (less indentation)
+              if (line.match(/^ {0,10}\w/)) {
+                if (currentNetwork) networks.push(currentNetwork);
+                currentNetwork = null;
+              }
+            }
+          }
+          if (currentNetwork) networks.push(currentNetwork);
+          
+          resolve(networks);
+        });
+      });
+    } else {
+      // Windows / Linux
+      return await wifi.scan();
+    }
+  } catch (error) {
+    console.error("Wifi scan failed", error);
+    return [];
+  }
 });
 
 app.whenReady().then(createWindow);

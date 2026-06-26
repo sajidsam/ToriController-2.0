@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Globe, Download } from 'lucide-react';
-import TopNavBar from './TopNavBar';
-import TelemetryPanel from './TelemetryPanel';
-import ControlPanel from './ControlPanel';
-import MainCenterView from './MainCenterView';
+import React, { useState, useEffect, useRef } from "react";
+import { Globe, Download } from "lucide-react";
+import TopNavBar from "./TopNavBar";
+import TelemetryPanel from "./TelemetryPanel";
+import ControlPanel from "./ControlPanel";
+import MainCenterView from "./MainCenterView";
 
 // Simple 1D Kalman Filter for smoothing sensor fluctuations
 class KalmanFilter {
@@ -30,7 +30,7 @@ class KalmanFilter {
     let diff;
     if (this.isAngle) {
       diff = z - this.x;
-      diff = ((diff + 180) % 360);
+      diff = (diff + 180) % 360;
       if (diff < 0) diff += 360;
       diff -= 180;
     } else {
@@ -49,7 +49,6 @@ class KalmanFilter {
 }
 
 const SubmarineDashboard = () => {
-
   // Kalman Filters for IMU/gyro smoothing
   const pitchFilterRef = useRef(new KalmanFilter(0.02, 0.5, false));
   const rollFilterRef = useRef(new KalmanFilter(0.02, 0.5, false));
@@ -77,7 +76,7 @@ const SubmarineDashboard = () => {
     sumRoll: 0,
     headingStartX: 0,
     headingStartY: 0,
-    count: 0
+    count: 0,
   });
 
   const setIsCalibratingVal = (val) => {
@@ -107,40 +106,41 @@ const SubmarineDashboard = () => {
 
   const startCalibration = () => {
     setIsCalibratingVal(true);
-    setCalibrationTimeLeft(10);
     setIsCalibratedVal(false);
     calibrationDataRef.current = {
       sumPitch: 0,
       sumRoll: 0,
       headingStartX: 0,
       headingStartY: 0,
-      count: 0
+      count: 0,
     };
-    console.log("IMU Calibration countdown started...");
+    console.log("IMU Calibration started. Intercepting next 10 packets...");
   };
 
   // --- CI/CD AUTO-UPDATE NOTIFIER ---
   const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [latestVersion, setLatestVersion] = useState('');
-  const [releaseUrl, setReleaseUrl] = useState('');
+  const [latestVersion, setLatestVersion] = useState("");
+  const [releaseUrl, setReleaseUrl] = useState("");
 
   useEffect(() => {
     const checkUpdate = async () => {
       try {
-        const response = await fetch('https://api.github.com/repos/sifat-99/ToriController-2.0/releases/latest');
+        const response = await fetch(
+          "https://api.github.com/repos/sifat-99/ToriController-2.0/releases/latest",
+        );
         if (!response.ok) return;
         const data = await response.json();
         const latest = data.tag_name; // e.g. "v2.0.2" or "2.0.2"
         if (!latest) return;
-        
+
         // Clean v prefix if present
-        const cleanLatest = latest.replace(/^v/, '');
-        const cleanCurrent = '2.0.1'; // Matches package.json
-        
+        const cleanLatest = latest.replace(/^v/, "");
+        const cleanCurrent = "2.0.1"; // Matches package.json
+
         if (cleanLatest !== cleanCurrent) {
-          const latestParts = cleanLatest.split('.').map(Number);
-          const currentParts = cleanCurrent.split('.').map(Number);
-          
+          const latestParts = cleanLatest.split(".").map(Number);
+          const currentParts = cleanCurrent.split(".").map(Number);
+
           let isNewer = false;
           for (let i = 0; i < 3; i++) {
             const lPart = latestParts[i] || 0;
@@ -152,10 +152,13 @@ const SubmarineDashboard = () => {
               break;
             }
           }
-          
+
           if (isNewer) {
             setLatestVersion(latest);
-            setReleaseUrl(data.html_url || 'https://github.com/sifat-99/ToriController-2.0/releases');
+            setReleaseUrl(
+              data.html_url ||
+                "https://github.com/sifat-99/ToriController-2.0/releases",
+            );
             setUpdateAvailable(true);
           }
         }
@@ -163,7 +166,7 @@ const SubmarineDashboard = () => {
         console.warn("Failed to check for updates:", err);
       }
     };
-    
+
     // Check after 2 seconds to not block main thread startup rendering
     const timer = setTimeout(checkUpdate, 2000);
     return () => clearTimeout(timer);
@@ -173,7 +176,7 @@ const SubmarineDashboard = () => {
     if (!isCalibrating) return;
 
     const timer = setInterval(() => {
-      setCalibrationTimeLeft(prev => {
+      setCalibrationTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           const data = calibrationDataRef.current;
@@ -189,7 +192,9 @@ const SubmarineDashboard = () => {
             setRollOffsetVal(avgRoll);
             setHeadingOffsetVal(avgHeading);
             setIsCalibratedVal(true);
-            console.log(`IMU Calibrated. Offsets -> Pitch: ${avgPitch.toFixed(2)}, Roll: ${avgRoll.toFixed(2)}, Heading: ${avgHeading.toFixed(2)}`);
+            console.log(
+              `IMU Calibrated. Offsets -> Pitch: ${avgPitch.toFixed(2)}, Roll: ${avgRoll.toFixed(2)}, Heading: ${avgHeading.toFixed(2)}`,
+            );
           } else {
             setPitchOffsetVal(0);
             setRollOffsetVal(0);
@@ -208,16 +213,6 @@ const SubmarineDashboard = () => {
   const processIMU = (rawPitch, rawRoll, rawHeading) => {
     if (!hasReceivedFirstDataRef.current) {
       setHasReceivedFirstDataVal(true);
-      setIsCalibratingVal(true);
-      setCalibrationTimeLeft(10);
-      setIsCalibratedVal(false);
-      calibrationDataRef.current = {
-        sumPitch: 0,
-        sumRoll: 0,
-        headingStartX: 0,
-        headingStartY: 0,
-        count: 0
-      };
     }
 
     const filteredP = pitchFilterRef.current.update(-rawPitch);
@@ -232,10 +227,29 @@ const SubmarineDashboard = () => {
       calibrationDataRef.current.headingStartY += Math.sin(rad);
       calibrationDataRef.current.count += 1;
 
-      // Show raw filtered values during countdown
+      // Show raw filtered values during packet interception
       setPitch(filteredP);
       setRoll(filteredR);
       setHeading(filteredH);
+
+      if (calibrationDataRef.current.count >= 10) {
+        const data = calibrationDataRef.current;
+        const avgPitch = data.sumPitch / data.count;
+        const avgRoll = data.sumRoll / data.count;
+        const avgX = data.headingStartX / data.count;
+        const avgY = data.headingStartY / data.count;
+        let avgHeading = (Math.atan2(avgY, avgX) * 180) / Math.PI;
+        avgHeading = (avgHeading + 360) % 360;
+
+        setPitchOffsetVal(avgPitch);
+        setRollOffsetVal(avgRoll);
+        setHeadingOffsetVal(avgHeading);
+        setIsCalibratedVal(true);
+        setIsCalibratingVal(false);
+        console.log(
+          `IMU Calibrated. Offsets -> Pitch: ${avgPitch.toFixed(2)}, Roll: ${avgRoll.toFixed(2)}, Yaw: ${avgHeading.toFixed(2)}`,
+        );
+      }
     } else if (isCalibratedRef.current) {
       // Subtraction offset math to show zero-relative values (+/-)
       setPitch(filteredP - pitchOffsetRef.current);
@@ -274,20 +288,26 @@ const SubmarineDashboard = () => {
   const [rearFinX, setRearFinX] = useState(0);
   const [rearFinY, setRearFinY] = useState(0);
   const [ballastActive, setBallastActive] = useState(false);
-  const [driveMode, setDriveMode] = useState('stopped'); // 'forward', 'reverse', 'stopped'
-  const [keyHint, setKeyHint] = useState('Use ↑ ↓ ← → and Spacebar');
-  const [lastCommand, setLastCommand] = useState('None');
-  const [lastReceived, setLastReceived] = useState('None');
+  const [driveMode, setDriveMode] = useState("stopped"); // 'forward', 'reverse', 'stopped'
+  const [keyHint, setKeyHint] = useState("Use ↑ ↓ ← → and Spacebar");
+  const [lastCommand, setLastCommand] = useState("None");
+  const [lastReceived, setLastReceived] = useState("None");
 
   // Connectivity State
-  const [ipAddress, setIpAddress] = useState('10.76.18.98'); // Change to your ESP32's IP
-  const [cameraUrl, setCameraUrl] = useState('http://10.73.115.219:8080/video'); // IP Webcam URL
+  const [ipAddress, setIpAddress] = useState("10.76.18.98"); // Change to your ESP32's IP
+  const [cameraUrl, setCameraUrl] = useState("http://10.73.115.219:8080/video"); // IP Webcam URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
   const [showUsbPortSelector, setShowUsbPortSelector] = useState(false);
   const [pairedPorts, setPairedPorts] = useState([]);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
-  const [modalIp, setModalIp] = useState('');
-  const [modalCameraUrl, setModalCameraUrl] = useState('');
+  const [modalIp, setModalIp] = useState("192.168.4.1");
+  const [modalCameraUrl, setModalCameraUrl] = useState(
+    "http://192.168.4.1:81/stream",
+  );
+  const [modalSsid, setModalSsid] = useState("");
+  const [modalPassword, setModalPassword] = useState("");
+  const [scannedNetworks, setScannedNetworks] = useState([]);
+  const [isScanningWifi, setIsScanningWifi] = useState(false);
 
   const openNetworkModal = () => {
     setModalIp(ipAddress);
@@ -301,6 +321,52 @@ const SubmarineDashboard = () => {
     setShowNetworkModal(false);
   };
 
+  const scanHostWifi = async () => {
+    if (!window.electronAPI || !window.electronAPI.scanWifi) {
+      alert("Native Wi-Fi scanning requires the Electron host.");
+      return;
+    }
+    
+    setIsScanningWifi(true);
+    setScannedNetworks([]);
+    try {
+      const networks = await window.electronAPI.scanWifi();
+      
+      // Filter out duplicate SSIDs (node-wifi often returns multiple BSSIDs for the same SSID)
+      const uniqueNetworks = [];
+      const seenSsids = new Set();
+      
+      // Sort by signal_level (rssi-equivalent in node-wifi) descending
+      networks.sort((a, b) => (b.signal_level || 0) - (a.signal_level || 0));
+      
+      for (const net of networks) {
+        if (net.ssid && !seenSsids.has(net.ssid)) {
+          seenSsids.add(net.ssid);
+          uniqueNetworks.push({ ssid: net.ssid, rssi: net.signal_level });
+        }
+      }
+      
+      setScannedNetworks(uniqueNetworks);
+      if (uniqueNetworks.length > 0 && !modalSsid) {
+        setModalSsid(uniqueNetworks[0].ssid);
+      }
+    } catch (err) {
+      console.error("Native Wi-Fi scan failed:", err);
+      alert("Failed to scan for Wi-Fi networks natively.");
+    } finally {
+      setIsScanningWifi(false);
+    }
+  };
+
+  const handleWifiProvisioning = () => {
+    if (!modalSsid || !modalPassword) {
+      alert("Please enter both SSID and Password");
+      return;
+    }
+    const payload = `WIFI:${modalSsid}:${modalPassword}`;
+    sendCommand("ESP32", payload);
+  };
+
   // Refs for persistent connection state
   const serialWriterRef = useRef(null);
   const serialPortRef = useRef(null);
@@ -310,14 +376,14 @@ const SubmarineDashboard = () => {
     if (!info) return "Unknown Serial Port";
     const vid = info.usbVendorId;
     const pid = info.usbProductId;
-    
+
     if (!vid) return "Standard Serial Port";
 
     let vendorName = `USB Device (VID: 0x${vid.toString(16).toUpperCase()})`;
-    if (vid === 0x1A86) vendorName = "CH340 USB-to-Serial";
-    else if (vid === 0x10C4) vendorName = "CP210x USB-to-UART";
+    if (vid === 0x1a86) vendorName = "CH340 USB-to-Serial";
+    else if (vid === 0x10c4) vendorName = "CP210x USB-to-UART";
     else if (vid === 0x0403) vendorName = "FTDI USB-to-Serial";
-    else if (vid === 0x303A) vendorName = "Espressif ESP32 USB-Serial";
+    else if (vid === 0x303a) vendorName = "Espressif ESP32 USB-Serial";
     else if (vid === 0x2341) vendorName = "Arduino USB Device";
 
     if (pid) {
@@ -326,7 +392,7 @@ const SubmarineDashboard = () => {
     return vendorName;
   };
 
-  const disconnectUsb = async () => {
+  const disconnectUsb = async (intentional = false) => {
     try {
       if (serialPortRef.current) {
         await serialPortRef.current.close();
@@ -338,16 +404,65 @@ const SubmarineDashboard = () => {
       serialWriterRef.current = null;
       serialPortRef.current = null;
       setHasReceivedFirstDataVal(false); // Reset calibration state on disconnect
+
+      // Stop all submarine movement for safety
+      setDriveMode("stopped");
+      setThrottleLimit(0);
+      setFrontFinAngle(0);
+      setRearFinX(0);
+      setRearFinY(0);
+      setKeyHint(
+        intentional ? "SYSTEM STOPPED" : "CONNECTION LOST - RECONNECTING...",
+      );
+
+      if (!intentional && navigator.serial) {
+        autoReconnectUsb();
+      }
     }
   };
 
-  const startPortConnection = async (port) => {
+  const autoReconnectUsbRef = useRef(false);
+
+  const autoReconnectUsb = async () => {
+    if (autoReconnectUsbRef.current) return;
+    autoReconnectUsbRef.current = true;
+
+    console.log("Attempting auto-reconnect...");
+
+    // Loop every 2 seconds until connected or user manually intervenes
+    while (autoReconnectUsbRef.current) {
+      try {
+        const ports = await navigator.serial.getPorts();
+        if (ports && ports.length > 0) {
+          const port = ports[0];
+          await startPortConnection(port, true);
+          console.log("Auto-reconnect successful!");
+          autoReconnectUsbRef.current = false;
+          setKeyHint("RECONNECTED SUCCESSFULLY");
+          break; // Exit loop on success
+        }
+      } catch (err) {
+        console.warn("Auto-reconnect attempt failed:", err);
+      }
+
+      // Wait 2 seconds before next attempt
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    autoReconnectUsbRef.current = false;
+  };
+
+  const startPortConnection = async (port, isAutoReconnect = false) => {
     try {
       await port.open({ baudRate: 115200 });
       serialPortRef.current = port;
 
       // Native USB ESP32 boards require DTR to be asserted to receive serial data
-      await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+      // Some generic boards do not support this and will throw an error, so we catch and ignore it
+      try {
+        await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+      } catch (err) {
+        console.warn("setSignals not supported on this port:", err.message);
+      }
 
       // 1. Setup Writer (To send commands TO submarine)
       const textEncoder = new TextEncoderStream();
@@ -374,7 +489,7 @@ const SubmarineDashboard = () => {
           if (done) break; // Port was closed
 
           buffer += value;
-          const lines = buffer.split('\n');
+          const lines = buffer.split("\n");
 
           // Keep the last incomplete chunk in the buffer for the next loop
           buffer = lines.pop();
@@ -382,11 +497,19 @@ const SubmarineDashboard = () => {
           for (let line of lines) {
             line = line.trim();
             // Look for our temperature tags
-            if (line.startsWith("Water Temp:") || line.startsWith("TMP:") || line.startsWith("TEMP OF THE MAIN BOARD:")) {
+            if (
+              line.startsWith("Water Temp:") ||
+              line.startsWith("TMP:") ||
+              line.startsWith("TEMP OF THE MAIN BOARD:")
+            ) {
               let tempStr = "";
               if (line.includes("TMP:")) tempStr = line.split("TMP:")[1];
-              else if (line.includes("Water Temp:")) tempStr = line.split("Water Temp:")[1];
-              else tempStr = line.split("TEMP OF THE MAIN BOARD:")[1].replace(" °C", "");
+              else if (line.includes("Water Temp:"))
+                tempStr = line.split("Water Temp:")[1];
+              else
+                tempStr = line
+                  .split("TEMP OF THE MAIN BOARD:")[1]
+                  .replace(" °C", "");
 
               const parsedTemp = parseFloat(tempStr);
               if (!isNaN(parsedTemp)) {
@@ -397,13 +520,13 @@ const SubmarineDashboard = () => {
             } else if (line.startsWith("GPS: ")) {
               const gpsStr = line.replace("GPS: ", "").trim();
               if (gpsStr === "WIRING_ERROR") {
-                 setSats(-2); // Special code for wiring error
+                setSats(-2); // Special code for wiring error
               } else {
-                  const parts = gpsStr.split(",");
-                  if(parts.length === 2) {
-                    setLat(parseFloat(parts[0]));
-                    setLng(parseFloat(parts[1]));
-                  }
+                const parts = gpsStr.split(",");
+                if (parts.length === 2) {
+                  setLat(parseFloat(parts[0]));
+                  setLng(parseFloat(parts[1]));
+                }
               }
             } else if (line.startsWith("GPS_SAT: ")) {
               setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
@@ -419,7 +542,9 @@ const SubmarineDashboard = () => {
                 }
               }
             } else if (line.startsWith("MPU9250 - Pitch:")) {
-              const match = line.match(/MPU9250 - Pitch:\s*([\d\.-]+)°\s*\|\s*Roll:\s*([\d\.-]+)°\s*\|\s*Yaw:\s*([\d\.-]+)°(?:\s*\|\s*Accel\(g\):\s*([\d\.-]+),([\d\.-]+),([\d\.-]+))?/);
+              const match = line.match(
+                /MPU9250 - Pitch:\s*([\d\.-]+)°\s*\|\s*Roll:\s*([\d\.-]+)°\s*\|\s*Yaw:\s*([\d\.-]+)°(?:\s*\|\s*Accel\(g\):\s*([\d\.-]+),([\d\.-]+),([\d\.-]+))?/,
+              );
               if (match) {
                 const p = parseFloat(match[1]);
                 const r = parseFloat(match[2]);
@@ -444,23 +569,29 @@ const SubmarineDashboard = () => {
         console.warn("Serial Read Disconnected or Error:", err);
       } finally {
         reader.releaseLock();
-        disconnectUsb();
+        disconnectUsb(false); // Unintentional disconnect triggers auto-reconnect
       }
     } catch (err) {
-      console.error('USB Connect error:', err);
-      alert('USB Connection Failed: ' + err.message);
+      console.error("USB Connect error:", err);
+      if (!isAutoReconnect) {
+        alert("USB Connection Failed: " + err.message);
+      }
+      throw err; // Re-throw so autoReconnectUsb loop knows it failed
     }
   };
 
   const connectUsb = async () => {
     if (isUsbConnected) {
-      await disconnectUsb();
+      autoReconnectUsbRef.current = false; // Stop auto-reconnect if manually disconnecting
+      await disconnectUsb(true);
       return;
     }
 
     try {
       if (!navigator.serial) {
-        alert("Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.");
+        alert(
+          "Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.",
+        );
         return;
       }
 
@@ -490,9 +621,12 @@ const SubmarineDashboard = () => {
     setLastCommand(serialPayload);
     try {
       if (isUsbConnected && serialWriterRef.current) {
-        await serialWriterRef.current.write(serialPayload + '\r\n');
+        await serialWriterRef.current.write(serialPayload + "\r\n");
       } else {
-        await fetch(`http://${ipAddress}${endpoint}`, { mode: 'no-cors', cache: 'no-store' });
+        await fetch(`http://${ipAddress}${endpoint}`, {
+          mode: "no-cors",
+          cache: "no-store",
+        });
       }
       setSignalStrength(100);
     } catch (err) {
@@ -504,50 +638,51 @@ const SubmarineDashboard = () => {
   useEffect(() => {
     let tickCount = 0;
     const pingInterval = setInterval(() => {
-        if (isUsbConnected) return; // If on USB, the reader loop handles everything. Do not ping WiFi.
+      if (isUsbConnected) return; // If on USB, the reader loop handles everything. Do not ping WiFi.
 
-        tickCount++;
+      tickCount++;
 
-        // 1. Fetch Real IMU Data (WiFi) every 1 second
-        fetch(`http://${ipAddress}/imu`, { signal: AbortSignal.timeout(800) })
-            .then(res => {
-                if (!res.ok) throw new Error("Network response was not ok");
-                return res.json();
-            })
-            .then(data => {
-                if (data) {
-                    const p = parseFloat(data.pitch);
-                    const r = parseFloat(data.roll);
-                    const y = parseFloat(data.yaw);
-                    if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-                      processIMU(r, p, y);
-                    }
-                }
-            })
-            .catch(err => console.warn("IMU Fetch Error (WiFi):", err.message));
+      // 1. Fetch Real IMU Data (WiFi) every 1 second
+      fetch(`http://${ipAddress}/imu`, { signal: AbortSignal.timeout(800) })
+        .then((res) => {
+          if (!res.ok) throw new Error("Network response was not ok");
+          return res.json();
+        })
+        .then((data) => {
+          if (data) {
+            const p = parseFloat(data.pitch);
+            const r = parseFloat(data.roll);
+            const y = parseFloat(data.yaw);
+            if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
+              processIMU(r, p, y);
+            }
+          }
+        })
+        .catch((err) => console.warn("IMU Fetch Error (WiFi):", err.message));
 
-        // 2. Ping and Temp every 2 seconds
-        if (tickCount % 2 === 0) {
-            // Ping the main route to check signal
-            fetch(`http://${ipAddress}/`, { mode: 'no-cors' })
-                .then(() => setSignalStrength(100))
-                .catch(() => setSignalStrength(0));
+      // 2. Ping and Temp every 2 seconds
+      if (tickCount % 2 === 0) {
+        // Ping the main route to check signal
+        fetch(`http://${ipAddress}/`, { mode: "no-cors" })
+          .then(() => setSignalStrength(100))
+          .catch(() => setSignalStrength(0));
 
-            // Fetch Real Temperature Data
-            fetch(`http://${ipAddress}/temp`, { signal: AbortSignal.timeout(1500) })
-                .then(res => {
-                    if (!res.ok) throw new Error("Network response was not ok");
-                    return res.text();
-                })
-                .then(data => {
-                    const parsedTemp = parseFloat(data);
-                    if (!isNaN(parsedTemp)) {
-                        setTemp(parsedTemp);
-                    }
-                })
-                .catch(err => console.warn("Temp Fetch Error (WiFi):", err.message));
-        }
-
+        // Fetch Real Temperature Data
+        fetch(`http://${ipAddress}/temp`, { signal: AbortSignal.timeout(1500) })
+          .then((res) => {
+            if (!res.ok) throw new Error("Network response was not ok");
+            return res.text();
+          })
+          .then((data) => {
+            const parsedTemp = parseFloat(data);
+            if (!isNaN(parsedTemp)) {
+              setTemp(parsedTemp);
+            }
+          })
+          .catch((err) =>
+            console.warn("Temp Fetch Error (WiFi):", err.message),
+          );
+      }
     }, 1000);
     return () => clearInterval(pingInterval);
   }, [isUsbConnected, ipAddress]);
@@ -556,145 +691,161 @@ const SubmarineDashboard = () => {
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ignore text input fields, but allow range sliders
-      if (['TEXTAREA'].includes(e.target.tagName)) return;
-      if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+      if (["TEXTAREA"].includes(e.target.tagName)) return;
+      if (e.target.tagName === "INPUT" && e.target.type !== "range") return;
 
-      switch(e.key.toLowerCase()) {
-        case 'w':
-            e.preventDefault();
-            setDriveMode('forward');
-            setThrottleLimit(prev => Math.min(Number(prev) + 2, 50));
-            setKeyHint('Moving Forward (Speed Up)');
-            break;
-        case 's':
-            e.preventDefault();
-            setThrottleLimit(prev => {
-                const newLimit = Math.max(Number(prev) - 2, 0);
-                if (newLimit === 0) setDriveMode('stopped');
-                return newLimit;
-            });
-            setKeyHint('Moving Forward (Speed Down)');
-            break;
-        case 'a':
-            e.preventDefault();
-            setFrontFinAngle(prev => Math.max(Number(prev) - 10, -30));
-            setRearFinX(prev=> Math.min(Number(prev) + 10, 30))
-            setKeyHint('Steering Left');
-            break;
-        case 'd':
-            e.preventDefault();
-            setFrontFinAngle(prev => Math.min(Number(prev) + 10, 30));
-            setRearFinX(prev=> Math.max(Number(prev) - 10, -30))
-            setKeyHint('Steering Right');
-            break;
-        case 'arrowup':
-            e.preventDefault();
-            setRearFinY(prev => Math.min(Number(prev) + 5, 45));
-            setKeyHint('Empennage Pitch Up');
-            break;
-        case 'arrowdown':
-            e.preventDefault();
-            setRearFinY(prev => Math.max(Number(prev) - 5, -45));
-            setKeyHint('Empennage Pitch Down');
-            break;
-        case 'arrowleft':
-            e.preventDefault();
-            setRearFinX(prev => Math.max(Number(prev) - 5, -45));
-            setKeyHint('Empennage Yaw Left');
-            break;
-        case 'arrowright':
-            e.preventDefault();
-            setRearFinX(prev => Math.min(Number(prev) + 5, 45));
-            setKeyHint('Empennage Yaw Right');
-            break;
-        case ' ': // Spacebar
-            e.preventDefault();
-            setDriveMode('stopped');
-            setThrottleLimit(0);
-            setFrontFinAngle(0);
-            setRearFinX(0);
-            setRearFinY(0);
-            setKeyHint('SYSTEM STOPPED');
-            break;
+      switch (e.key.toLowerCase()) {
+        case "w":
+          e.preventDefault();
+          setDriveMode("forward");
+          setThrottleLimit((prev) => Math.min(Number(prev) + 2, 100));
+          setKeyHint("Moving Forward (Speed Up)");
+          break;
+        case "s":
+          e.preventDefault();
+          setThrottleLimit((prev) => {
+            const newLimit = Math.max(Number(prev) - 2, 0);
+            if (newLimit === 0) setDriveMode("stopped");
+            return newLimit;
+          });
+          setKeyHint("Moving Forward (Speed Down)");
+          break;
+        case "a":
+          e.preventDefault();
+          setFrontFinAngle((prev) => Math.max(Number(prev) - 10, -30));
+          setRearFinX((prev) => Math.min(Number(prev) + 10, 30));
+          setKeyHint("Steering Left");
+          break;
+        case "d":
+          e.preventDefault();
+          setFrontFinAngle((prev) => Math.min(Number(prev) + 10, 30));
+          setRearFinX((prev) => Math.max(Number(prev) - 10, -30));
+          setKeyHint("Steering Right");
+          break;
+        case "arrowup":
+          e.preventDefault();
+          setRearFinY((prev) => Math.min(Number(prev) + 5, 45));
+          setKeyHint("Empennage Pitch Up");
+          break;
+        case "arrowdown":
+          e.preventDefault();
+          setRearFinY((prev) => Math.max(Number(prev) - 5, -45));
+          setKeyHint("Empennage Pitch Down");
+          break;
+        case "arrowleft":
+          e.preventDefault();
+          setRearFinX((prev) => Math.max(Number(prev) - 5, -45));
+          setKeyHint("Empennage Yaw Left");
+          break;
+        case "arrowright":
+          e.preventDefault();
+          setRearFinX((prev) => Math.min(Number(prev) + 5, 45));
+          setKeyHint("Empennage Yaw Right");
+          break;
+        case " ": // Spacebar
+          e.preventDefault();
+          setDriveMode("stopped");
+          setThrottleLimit(0);
+          setFrontFinAngle(0);
+          setRearFinX(0);
+          setRearFinY(0);
+          setKeyHint("SYSTEM STOPPED");
+          break;
         default:
-            break;
+          break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   // --- ACTUATOR TRANSMITTERS ---
 
   // Drive Mode (Forward / Stop / Reverse)
   useEffect(() => {
-      let serialStr = 'STOP';
-      if (driveMode === 'forward') serialStr = 'DIR:FWD';
-      else if (driveMode === 'reverse') serialStr = 'DIR:REV';
-      sendCommand(`/action?dir=${driveMode}`, serialStr);
+    let serialStr = "STOP";
+    if (driveMode === "forward") serialStr = "DIR:FWD";
+    else if (driveMode === "reverse") serialStr = "DIR:REV";
+    sendCommand(`/action?dir=${driveMode}`, serialStr);
   }, [driveMode]);
 
   // Speed (PWM ranges 0-255)
   useEffect(() => {
-      if (driveMode === 'stopped') return;
-      const speedPWM = Math.round((throttleLimit / 100) * 255);
-      const timer = setTimeout(() => {
-          sendCommand(`/speed?val=${speedPWM}`, `SPD:${speedPWM}`);
-      }, 50); // 50ms debounce
-      return () => clearTimeout(timer);
+    if (driveMode === "stopped") return;
+    const speedPWM = Math.round((throttleLimit / 100) * 255);
+    const timer = setTimeout(() => {
+      sendCommand(`/speed?val=${speedPWM}`, `SPD:${speedPWM}`);
+    }, 50); // 50ms debounce
+    return () => clearTimeout(timer);
   }, [throttleLimit, driveMode]);
 
   // Front Fin (Bow Planes)
   useEffect(() => {
-      const angle = 97 + frontFinAngle;
-      const timer = setTimeout(() => {
-          sendCommand(`/servo?target=front&val=${angle}`, `F_SRV:${angle}`);
-      }, 50); // 50ms debounce
-      return () => clearTimeout(timer);
+    const angle = 97 + frontFinAngle;
+    const timer = setTimeout(() => {
+      sendCommand(`/servo?target=front&val=${angle}`, `F_SRV:${angle}`);
+    }, 50); // 50ms debounce
+    return () => clearTimeout(timer);
   }, [frontFinAngle]);
 
   // Back Fin (Rudder)
   useEffect(() => {
-      const angle = 97 + rearFinX;
-      const timer = setTimeout(() => {
-          sendCommand(`/servo?target=back&val=${angle}`, `B_SRV:${angle}`);
-      }, 50); // 50ms debounce
-      return () => clearTimeout(timer);
+    const angle = 97 + rearFinX;
+    const timer = setTimeout(() => {
+      sendCommand(`/servo?target=back&val=${angle}`, `B_SRV:${angle}`);
+    }, 50); // 50ms debounce
+    return () => clearTimeout(timer);
   }, [rearFinX]);
 
   // --- UI SIMULATION EFFECT (Adds "life" to the dashboard) ---
   useEffect(() => {
     const interval = setInterval(() => {
-        // Only animate IMU noise when device is connected
-        if (isUsbConnected) {
-          setSignalStrength(prev => Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 5)));
-          if (!isCalibrating) {
-            setHeading(prev => (prev + (Math.random() - 0.5) * 2) % 360);
-            setPitch(prev => prev + (Math.random() - 0.5) * 1);
-            setRoll(prev => prev + (Math.random() - 0.5) * 1);
-          }
-          setDepth(prev => Math.max(0, prev + (Math.random() - 0.5) * 0.1));
+      // Only animate IMU noise when device is connected
+      if (isUsbConnected) {
+        setSignalStrength((prev) =>
+          Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 5)),
+        );
+        if (!isCalibrating) {
+          setHeading((prev) => (prev + (Math.random() - 0.5) * 2) % 360);
+          setPitch((prev) => prev + (Math.random() - 0.5) * 1);
+          setRoll((prev) => prev + (Math.random() - 0.5) * 1);
         }
+        setDepth((prev) => Math.max(0, prev + (Math.random() - 0.5) * 0.1));
+      }
 
-        let targetRpm   = driveMode === 'stopped' ? 0 : Math.max(0, throttleLimit * 210);
-        let targetSpeed = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 7.5;
-        let targetAmps  = driveMode === 'stopped' ? 0 : (throttleLimit / 100) * 12;
+      let targetRpm =
+        driveMode === "stopped" ? 0 : Math.max(0, throttleLimit * 210);
+      let targetSpeed =
+        driveMode === "stopped" ? 0 : (throttleLimit / 100) * 7.5;
+      let targetAmps = driveMode === "stopped" ? 0 : (throttleLimit / 100) * 12;
 
-        setRpm(prev => prev + (targetRpm - prev) * 0.2 + (driveMode !== 'stopped' ? (Math.random() - 0.5) * 50 : 0));
-        setAmps(prev => prev + (targetAmps - prev) * 0.2 + (Math.random() - 0.5) * 0.5);
-        setSpeedKnots(prev => prev + (targetSpeed - prev) * 0.1 + (Math.random() - 0.5) * 0.2);
+      setRpm(
+        (prev) =>
+          prev +
+          (targetRpm - prev) * 0.2 +
+          (driveMode !== "stopped" ? (Math.random() - 0.5) * 50 : 0),
+      );
+      setAmps(
+        (prev) =>
+          prev + (targetAmps - prev) * 0.2 + (Math.random() - 0.5) * 0.5,
+      );
+      setSpeedKnots(
+        (prev) =>
+          prev + (targetSpeed - prev) * 0.1 + (Math.random() - 0.5) * 0.2,
+      );
 
-        // Slowly drain battery
-        setBatteryVolt(prev => Math.max(9.0, prev - 0.001));
-
+      // Slowly drain battery
+      setBatteryVolt((prev) => Math.max(9.0, prev - 0.001));
     }, 1000);
 
     return () => clearInterval(interval);
   }, [throttleLimit, driveMode, isCalibrating, isUsbConnected]);
 
   // Derive battery percentage from voltage (12.6V = 100%, 10.5V = 0%)
-  const batteryPct = Math.round(Math.max(0, Math.min(100, ((batteryVolt - 10.5) / (12.6 - 10.5)) * 100)));
+  const batteryPct = Math.round(
+    Math.max(0, Math.min(100, ((batteryVolt - 10.5) / (12.6 - 10.5)) * 100)),
+  );
 
   // Dev tools to manually trigger warnings for testing
   const toggleLeak = () => setIsLeaking(!isLeaking);
@@ -703,19 +854,18 @@ const SubmarineDashboard = () => {
 
   return (
     <div className="flex flex-col flex-1 w-full lg:overflow-hidden overflow-y-auto relative bg-transparent">
-
       <TopNavBar
         signalStrength={signalStrength}
         batteryVolt={batteryVolt}
         batteryPct={batteryPct}
         isLeaking={isLeaking}
-        isUsbConnected={isUsbConnected} connectUsb={connectUsb}
+        isUsbConnected={isUsbConnected}
+        connectUsb={connectUsb}
         calibrateGyro={startCalibration}
         onOpenNetworkSettings={openNetworkModal}
       />
 
       <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
-
         {/* <TelemetryPanel
             depth={depth}
             amps={amps}
@@ -731,29 +881,34 @@ const SubmarineDashboard = () => {
         /> */}
 
         <MainCenterView
-            pitch={pitch}
-            roll={roll}
-            heading={heading}
-            speedKnots={speedKnots}
-            frontFinAngle={frontFinAngle}
-            rearFinX={rearFinX}
-            rearFinY={rearFinY}
-            cameraUrl={cameraUrl}
-            depth={depth}
-            amps={amps}
-            temp={temp}
-            isConnected={isUsbConnected}
+          pitch={pitch}
+          roll={roll}
+          heading={heading}
+          speedKnots={speedKnots}
+          frontFinAngle={frontFinAngle}
+          rearFinX={rearFinX}
+          rearFinY={rearFinY}
+          cameraUrl={cameraUrl}
+          depth={depth}
+          amps={amps}
+          temp={temp}
+          isConnected={isUsbConnected}
         />
 
         <ControlPanel
-            throttleLimit={throttleLimit} setThrottleLimit={setThrottleLimit}
-            frontFinAngle={frontFinAngle} setFrontFinAngle={setFrontFinAngle}
-            rearFinX={rearFinX} setRearFinX={setRearFinX}
-            rearFinY={rearFinY} setRearFinY={setRearFinY}
-            ballastActive={ballastActive} setBallastActive={setBallastActive}
-            driveMode={driveMode} setDriveMode={setDriveMode}
+          throttleLimit={throttleLimit}
+          setThrottleLimit={setThrottleLimit}
+          frontFinAngle={frontFinAngle}
+          setFrontFinAngle={setFrontFinAngle}
+          rearFinX={rearFinX}
+          setRearFinX={setRearFinX}
+          rearFinY={rearFinY}
+          setRearFinY={setRearFinY}
+          ballastActive={ballastActive}
+          setBallastActive={setBallastActive}
+          driveMode={driveMode}
+          setDriveMode={setDriveMode}
         />
-
       </div>
 
       {/* Dev Tools Overlay (for testing) */}
@@ -777,16 +932,39 @@ const SubmarineDashboard = () => {
           <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col items-center justify-center max-w-sm w-full shadow-2xl text-center gap-4 ring-1 ring-white/10">
             <div className="relative w-20 h-20 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-white/20 border-b-white/20 border-l-white animate-spin"></div>
-              <span className="text-xl font-bold font-mono text-white z-10">{calibrationTimeLeft}s</span>
+              <span className="text-xl font-bold font-mono text-white z-10">
+                {calibrationDataRef.current.count}/10
+              </span>
             </div>
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase animate-pulse">IMU Calibration</h3>
-              <p className="text-xs text-white/80">Hold submarine level in the flat 0° reference position.</p>
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase animate-pulse">
+                IMU Calibration
+              </h3>
+              <p className="text-xs text-white/80">
+                Hold submarine level in the flat 0° reference position.
+              </p>
             </div>
             <div className="w-full bg-white/5 border border-white/10 p-3 rounded font-mono text-xs text-left text-white/80 flex flex-col gap-1.5">
-              <div className="flex justify-between"><span>RAW PITCH:</span><span className="text-white font-bold">{pitch > 0 ? '+' : ''}{pitch.toFixed(1)}°</span></div>
-              <div className="flex justify-between"><span>RAW ROLL:</span><span className="text-white font-bold">{roll > 0 ? '+' : ''}{roll.toFixed(1)}°</span></div>
-              <div className="flex justify-between"><span>RAW YAW:</span><span className="text-white font-bold">{heading.toFixed(0)}°</span></div>
+              <div className="flex justify-between">
+                <span>RAW PITCH:</span>
+                <span className="text-white font-bold">
+                  {pitch > 0 ? "+" : ""}
+                  {pitch.toFixed(1)}°
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>RAW ROLL:</span>
+                <span className="text-white font-bold">
+                  {roll > 0 ? "+" : ""}
+                  {roll.toFixed(1)}°
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>RAW YAW:</span>
+                <span className="text-white font-bold">
+                  {heading.toFixed(0)}°
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -797,10 +975,14 @@ const SubmarineDashboard = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center text-white select-none">
           <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-md w-full shadow-2xl gap-4 ring-1 ring-white/10 mx-4">
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase">Select USB Serial Port</h3>
-              <p className="text-xs text-white/80">Choose a previously approved device or authorize a new one.</p>
+              <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase">
+                Select USB Serial Port
+              </h3>
+              <p className="text-xs text-white/80">
+                Choose a previously approved device or authorize a new one.
+              </p>
             </div>
-            
+
             <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
               {pairedPorts.length > 0 ? (
                 pairedPorts.map((port, idx) => {
@@ -812,8 +994,12 @@ const SubmarineDashboard = () => {
                       onClick={() => startPortConnection(port)}
                       className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/40 p-2.5 rounded font-mono text-xs transition flex justify-between items-center group"
                     >
-                      <span className="truncate pr-2 group-hover:text-white">{name}</span>
-                      <span className="text-[10px] text-white font-bold bg-white/20 border border-white/30 px-1.5 py-0.5 rounded shrink-0">CONNECT</span>
+                      <span className="truncate pr-2 group-hover:text-white">
+                        {name}
+                      </span>
+                      <span className="text-[10px] text-white font-bold bg-white/20 border border-white/30 px-1.5 py-0.5 rounded shrink-0">
+                        CONNECT
+                      </span>
                     </button>
                   );
                 })
@@ -848,14 +1034,19 @@ const SubmarineDashboard = () => {
           <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-md w-full shadow-2xl gap-4 ring-1 ring-white/10 mx-4">
             <div className="flex flex-col gap-1">
               <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase border-b border-white/20 pb-2 flex items-center gap-2">
-                <Globe size={18} /> NETWORK CONFIG
+                NETWORK CONFIG
               </h3>
-              <p className="text-[11px] text-white/80 mt-1">Configure ESP32 controller connection and video source stream links.</p>
+              <p className="text-[11px] text-white/80 mt-1">
+                Configure ESP32 controller connection and video source stream
+                links.
+              </p>
             </div>
 
             <div className="flex flex-col gap-3 font-mono text-xs text-left">
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">ESP32 IP Address</label>
+                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">
+                  ESP32 IP Address
+                </label>
                 <input
                   type="text"
                   value={modalIp}
@@ -866,7 +1057,9 @@ const SubmarineDashboard = () => {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">Camera Stream URL</label>
+                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">
+                  Camera Stream URL
+                </label>
                 <input
                   type="text"
                   value={modalCameraUrl}
@@ -874,6 +1067,61 @@ const SubmarineDashboard = () => {
                   className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
                   placeholder="http://192.168.x.x:8080/video"
                 />
+              </div>
+
+              <div className="border-t border-white/10 my-1 pt-3">
+                <h4 className="text-[10px] text-white/80 font-bold uppercase tracking-wider mb-2">
+                  Wi-Fi Provisioning (Over USB)
+                </h4>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    {scannedNetworks.length > 0 ? (
+                      <select
+                        value={modalSsid}
+                        onChange={(e) => setModalSsid(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                      >
+                        {scannedNetworks.map((net, idx) => (
+                          <option
+                            key={idx}
+                            value={net.ssid}
+                            className="bg-zinc-900 text-white"
+                          >
+                            {net.ssid} ({net.rssi}dBm)
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={modalSsid}
+                        onChange={(e) => setModalSsid(e.target.value)}
+                        className="flex-1 bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                        placeholder="SSID (Network Name)"
+                      />
+                    )}
+                    <button
+                      onClick={scanHostWifi}
+                      disabled={isScanningWifi}
+                      className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded text-xs font-bold uppercase transition-colors disabled:opacity-50"
+                    >
+                      {isScanningWifi ? "..." : "Scan Networks"}
+                    </button>
+                  </div>
+                  <input
+                    type="password"
+                    value={modalPassword}
+                    onChange={(e) => setModalPassword(e.target.value)}
+                    className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                    placeholder="Password"
+                  />
+                  <button
+                    onClick={handleWifiProvisioning}
+                    className="w-full bg-blue-600/80 hover:bg-blue-600 text-white font-mono font-bold py-2 rounded text-xs transition uppercase tracking-wider mt-1"
+                  >
+                    Connect ESP32
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -886,7 +1134,7 @@ const SubmarineDashboard = () => {
               </button>
               <button
                 onClick={() => setShowNetworkModal(false)}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider border border-white/10"
+                className="flex-1 bg-transparent border border-white/20 text-white hover:bg-white/10 font-mono font-bold py-2 px-3 rounded text-xs transition uppercase tracking-wider"
               >
                 Cancel
               </button>
@@ -902,7 +1150,7 @@ const SubmarineDashboard = () => {
             <div className="relative w-16 h-16 flex items-center justify-center mx-auto bg-white/5 rounded-full border border-white/20">
               <Download size={28} className="text-white animate-bounce" />
             </div>
-            
+
             <div className="flex flex-col gap-1">
               <h3 className="text-base font-bold font-mono tracking-widest text-white uppercase border-b border-white/10 pb-2">
                 UPDATE AVAILABLE
@@ -911,9 +1159,13 @@ const SubmarineDashboard = () => {
                 A new version of ToriController is available.
               </p>
               <div className="flex justify-center gap-4 text-[11px] font-mono mt-2 bg-white/5 border border-white/10 py-1.5 px-3 rounded">
-                <span>CURRENT: <span className="font-bold">v2.0.1</span></span>
+                <span>
+                  CURRENT: <span className="font-bold">v2.0.1</span>
+                </span>
                 <span className="text-white/40">|</span>
-                <span>LATEST: <span className="font-bold">{latestVersion}</span></span>
+                <span>
+                  LATEST: <span className="font-bold">{latestVersion}</span>
+                </span>
               </div>
             </div>
 
@@ -923,7 +1175,7 @@ const SubmarineDashboard = () => {
                   if (window.electronAPI?.openExternal) {
                     window.electronAPI.openExternal(releaseUrl);
                   } else {
-                    window.open(releaseUrl, '_blank');
+                    window.open(releaseUrl, "_blank");
                   }
                   setUpdateAvailable(false);
                 }}
@@ -941,7 +1193,6 @@ const SubmarineDashboard = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

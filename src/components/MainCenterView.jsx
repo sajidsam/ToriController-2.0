@@ -16,6 +16,7 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
     const [detectedObjects, setDetectedObjects] = useState([]);
     const [aiStatus, setAiStatus] = useState("LOADING");
     const [isImageLoaded, setIsImageLoaded] = useState(false);
+    const [isAiEnabled, setIsAiEnabled] = useState(false);
     const requestRef = useRef();
 
     useEffect(() => {
@@ -59,6 +60,14 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
         const ctx = canvasRef.current.getContext('2d');
         // Clear canvas at the START so we don't get frozen boxes if an error occurs
         ctx.clearRect(0, 0, cw, ch);
+
+        if (!isAiEnabled) {
+            if (aiStatus !== "DISABLED") {
+                setAiStatus("DISABLED");
+                setDetectedObjects([]);
+            }
+            return; // Skip detection if disabled
+        }
 
         const offCanvas = document.createElement('canvas');
         offCanvas.width = cw;
@@ -133,7 +142,13 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                 await detectRef.current();
             }
             if (isRunning) {
-                requestRef.current = requestAnimationFrame(loop);
+                // Throttle detection to ~4 times a second (250ms) to free up the CPU
+                // and event loop, preventing serial connection loss on low-end PCs
+                setTimeout(() => {
+                    if (isRunning) {
+                        requestRef.current = requestAnimationFrame(loop);
+                    }
+                }, 250);
             }
         };
 
@@ -165,10 +180,18 @@ const MainCenterView = ({ pitch = 0, roll = 0, heading = 0, speedKnots = 0, fron
                 >
                     <div className="absolute top-4 left-4 flex gap-2 z-40">
                         <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">LIVE</span>
-                        <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500">LIVE: 3D SIMULATION</span>
-                        <span className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border ${aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : aiStatus === "SEARCHING" ? 'bg-white/15 text-white/80 border-white/30' : 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'}`}>
-                            AI: {aiStatus}
-                        </span>
+                        <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500 hidden sm:inline">LIVE: 3D SIMULATION</span>
+                        <button 
+                            onClick={() => setIsAiEnabled(prev => !prev)}
+                            className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border cursor-pointer hover:opacity-80 transition-opacity ${
+                                !isAiEnabled ? 'bg-gray-500/20 text-gray-400 border-gray-500/50' :
+                                aiStatus === "TRACKING" ? 'bg-green-500/20 text-green-400 border-green-500/50' : 
+                                aiStatus === "SEARCHING" ? 'bg-white/15 text-white/80 border-white/30' : 
+                                'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'
+                            }`}
+                        >
+                            AI: {!isAiEnabled ? "OFF (CLICK TO ENABLE)" : aiStatus}
+                        </button>
                     </div>
 
                     {!isImageLoaded && (
