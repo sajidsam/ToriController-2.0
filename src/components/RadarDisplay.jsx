@@ -34,9 +34,9 @@ const RadarDisplay = ({
   const getColorByClassification = (classification) => {
     switch (classification) {
       case 'hostile': return '#ffffff';
-      case 'friendly': return '#a1a1aa';
-      case 'neutral': return '#71717a';
-      default: return '#e4e4e7';
+      case 'friendly': return '#e4e4e7';
+      case 'neutral': return '#a1a1aa';
+      default: return '#f4f4f5';
     }
   };
 
@@ -61,7 +61,7 @@ const RadarDisplay = ({
     ctx.fillRect(0, 0, width, height);
 
     // Grid overlay
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.lineWidth = 1;
     for (let i = 1; i <= 4; i++) {
       ctx.beginPath();
@@ -72,7 +72,7 @@ const RadarDisplay = ({
     // Radar screen circle
     ctx.beginPath();
     ctx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -88,18 +88,18 @@ const RadarDisplay = ({
       let radiusPx = (rNm / range) * maxRadius;
       ctx.beginPath();
       ctx.arc(centerX, centerY, radiusPx, 0, 2 * Math.PI);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       ctx.font = 'bold 9px monospace';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.fillText(`${rNm}nm`, centerX + radiusPx - 16, centerY - radiusPx + 10);
     }
     ctx.restore();
 
     // Cardinal directions and bearing lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
     ctx.lineWidth = 1;
     for (let ang = 0; ang < 360; ang += 45) {
       let rad = ang * Math.PI / 180;
@@ -113,7 +113,7 @@ const RadarDisplay = ({
 
     // Cardinal direction labels
     ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.textAlign = 'center';
     ctx.fillText('N', centerX, centerY - maxRadius - 14);
     ctx.fillText('S', centerX, centerY + maxRadius + 14);
@@ -248,16 +248,16 @@ const RadarDisplay = ({
     // Mode indicator
     ctx.globalAlpha = 1;
     ctx.font = 'bold 11px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.textAlign = 'left';
     ctx.fillText(`[${mode}]`, 12, 20);
 
     // Sonar power indicator
-    ctx.fillStyle = amps > 15 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
+    ctx.fillStyle = amps > 15 ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.8)';
     ctx.fillText(`PWR: ${amps.toFixed(1)}A`, 12, 35);
 
     // Sea state indicator based on depth
-    ctx.fillStyle = clutterFactor > 0.5 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.6)';
+    ctx.fillStyle = clutterFactor > 0.5 ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.8)';
     ctx.fillText(`DEPTH: ${depth.toFixed(1)}m`, 12, 50);
   }, [range, gain, mode, heading, speedKnots, depth, amps, selectedTarget]);
 

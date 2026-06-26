@@ -100,11 +100,11 @@ function PrimaryFlightDisplay({
   const pitchLadder = [-20, -15, -10, -5, 5, 10, 15, 20];
 
   /* ── Shared white color tokens ────────────────────────────── */
-  const W70 = "rgba(255,255,255,0.70)";
-  const W45 = "rgba(255,255,255,0.45)";
-  const W25 = "rgba(255,255,255,0.25)";
-  const W12 = "rgba(255,255,255,0.12)";
-  const W06 = "rgba(255,255,255,0.06)";
+  const W70 = "rgba(255,255,255,0.88)";
+  const W45 = "rgba(255,255,255,0.68)";
+  const W25 = "rgba(255,255,255,0.45)";
+  const W12 = "rgba(255,255,255,0.25)";
+  const W06 = "rgba(255,255,255,0.12)";
   const BG = "rgba(10,12,16,0.98)";
 
   return (
@@ -148,35 +148,11 @@ function PrimaryFlightDisplay({
       {/* Subtle scanlines */}
       <div className="pfd-scanlines absolute inset-0 pointer-events-none z-50" />
 
-      {/* ── HEADER: PFD label + Pitch / Roll / Yaw readouts ─── */}
+      {/* ── HEADER: PFD label ─── */}
       <div className="pfd-sep-h shrink-0 flex items-center justify-between px-3 py-1.5">
         <span style={{ fontSize: "9px", fontWeight: "700", letterSpacing: "0.22em", color: W45 }}>
           PRIMARY FLIGHT DISPLAY
         </span>
-
-        <div className="flex items-center gap-3">
-          {[
-            { label: "PITCH", val: `${pitch >= 0 ? "+" : ""}${pitch.toFixed(1)}°` },
-            { label: "ROLL", val: `${roll >= 0 ? "+" : ""}${roll.toFixed(1)}°` },
-            { label: "YAW", val: `${String(normalizedHdg).padStart(3, "0")}°` },
-            { label: "TEMP", val: `${temp.toFixed(1)}°C`, warn: tempWarning },
-          ].map(item => (
-            <div key={item.label} className="flex flex-col items-center" style={{ minWidth: "38px" }}>
-              <span style={{ fontSize: "6.5px", color: W45, letterSpacing: "0.15em", fontWeight: "700" }}>
-                {item.label}
-              </span>
-              <span style={{
-                fontSize: "10px", fontWeight: "900", letterSpacing: "0.04em",
-                color: item.warn ? "#f87171" : "#fff",
-                textShadow: item.warn
-                  ? "0 0 8px rgba(239,68,68,0.8)"
-                  : "0 0 6px rgba(255,255,255,0.25)",
-              }}>
-                {item.val}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* ── MAIN ROW: Depth tape | Horizon | VS tape ─────────── */}
@@ -318,6 +294,33 @@ function PrimaryFlightDisplay({
               <circle cx="100" cy="100" r="99" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
             </svg>
           </div>
+        </div>
+
+        {/* ── VERTICAL TELEMETRY INFO ──────────────────────── */}
+        <div className="flex flex-col justify-center shrink-0" style={{ gap: "var(--pfd-telemetry-gap)", width: "var(--pfd-telemetry-width)" }}>
+          {[
+            { label: "PITCH", val: `${pitch >= 0 ? "+" : ""}${pitch.toFixed(1)}°` },
+            { label: "ROLL", val: `${roll >= 0 ? "+" : ""}${roll.toFixed(1)}°` },
+            { label: "YAW", val: `${String(normalizedHdg).padStart(3, "0")}°` },
+            { label: "TEMP", val: `${temp.toFixed(1)}°C`, warn: tempWarning },
+          ].map(item => (
+            <div key={item.label} className="pfd-readout flex flex-col justify-center px-1.5 py-1 rounded" style={{ minHeight: "0" }}>
+              <span style={{ fontSize: "var(--pfd-lbl-font-size)", color: W45, letterSpacing: "0.1em", fontWeight: "700", lineHeight: "1" }}>
+                {item.label}
+              </span>
+              <span style={{
+                fontSize: "var(--pfd-val-font-size)", fontWeight: "900", letterSpacing: "0.02em",
+                color: item.warn ? "#f87171" : "#fff",
+                textShadow: item.warn
+                  ? "0 0 8px rgba(239,68,68,0.8)"
+                  : "0 0 6px rgba(255,255,255,0.25)",
+                lineHeight: "1.2",
+                marginTop: "2px"
+              }}>
+                {item.val}
+              </span>
+            </div>
+          ))}
         </div>
 
         {/* ── RIGHT: Vertical Speed tape ────────────────────── */}

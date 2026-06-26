@@ -42,12 +42,12 @@ const AdvancedRadarNavigation = ({
       {/* Header */}
       <div className="px-3 py-2 bg-black/60 border-b border-white/10 flex items-center justify-between shrink-0">
         <div>
-          <div className="text-white/80 text-xs font-bold uppercase tracking-widest font-mono">TACTICAL RADAR</div>
-          <div className="text-white/50 text-[10px] font-mono mt-0.5">SONAR ACTIVE</div>
+          <div className="text-white text-xs font-bold uppercase tracking-widest font-mono">TACTICAL RADAR</div>
+          <div className="text-white/80 text-[10px] font-mono mt-0.5">SONAR ACTIVE</div>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-white/80 animate-pulse"></div>
-          <span className="text-white/80 text-[10px] font-mono font-bold">{Math.floor(heading).toString().padStart(3, '0')}°</span>
+          <span className="text-white/95 text-[10px] font-mono font-bold">{Math.floor(heading).toString().padStart(3, '0')}°</span>
         </div>
       </div>
 

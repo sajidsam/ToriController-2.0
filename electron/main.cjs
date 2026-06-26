@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 
 // Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
@@ -7,10 +7,13 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 let win;
 
 function createWindow() {
+  const isMac = process.platform === "darwin";
   win = new BrowserWindow({
     width: 1000,
     height: 700,
     frame: false,
+    titleBarStyle: isMac ? "hidden" : undefined,
+    trafficLightPosition: isMac ? { x: 12, y: 10 } : undefined,
     icon: path.join(__dirname, "../assets/toriLogo.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -78,11 +81,19 @@ function createWindow() {
 ipcMain.on("minimize", () => win.minimize());
 
 ipcMain.on("maximize", () => {
-  if (win.isMaximized()) win.unmaximize();
-  else win.maximize();
+  if (process.platform === "darwin") {
+    win.setFullScreen(!win.isFullScreen());
+  } else {
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  }
 });
 
 ipcMain.on("close", () => win.close());
+
+ipcMain.on("open-external", (event, url) => {
+  shell.openExternal(url);
+});
 
 app.whenReady().then(createWindow);
 
