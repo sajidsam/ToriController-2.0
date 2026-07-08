@@ -23,6 +23,7 @@ const TopNavBar = ({
   isUsbConnected,
   connectUsb,
   calibrateGyro,
+  resetImuDrift,
   onOpenNetworkSettings,
 }) => {
   return (
@@ -77,14 +78,24 @@ const TopNavBar = ({
             </span>
           </button>
           {(isUsbConnected || signalStrength > 0) && (
-            <button
-              onClick={calibrateGyro}
-              className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-white/50 text-white hover:bg-white/10"
-              title="Calibrate Gyroscope"
-            >
-              <Compass size={14} />
-              <span className="hidden sm:inline">CALIBRATE</span>
-            </button>
+            <>
+              <button
+                onClick={calibrateGyro}
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-white/50 text-white hover:bg-white/10"
+                title="Calibrate Gyroscope"
+              >
+                <Compass size={14} />
+                <span className="hidden sm:inline">CALIBRATE</span>
+              </button>
+              <button
+                onClick={resetImuDrift}
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-red-900/50 border border-red-500/50 text-red-100 hover:bg-red-800/80"
+                title="Reset IMU Drift (Zero out XYZ displacement)"
+              >
+                <Compass size={14} className="animate-pulse text-red-300" />
+                <span className="hidden sm:inline">RESET DRIFT</span>
+              </button>
+            </>
           )}
         </div>
       </div>

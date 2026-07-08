@@ -135,7 +135,7 @@ const SubmarineDashboard = () => {
 
         // Clean v prefix if present
         const cleanLatest = latest.replace(/^v/, "");
-        const cleanCurrent = "2.0.1"; // Matches package.json
+        const cleanCurrent = "2.0.2"; // Matches package.json
 
         if (cleanLatest !== cleanCurrent) {
           const latestParts = cleanLatest.split(".").map(Number);
@@ -281,6 +281,10 @@ const SubmarineDashboard = () => {
   const [roll, setRoll] = useState(0);
   const [heading, setHeading] = useState(45);
   const [accel, setAccel] = useState({ x: 0.0, y: 0.0, z: 1.0 });
+  const [posX, setPosX] = useState(0.0);
+  const [posY, setPosY] = useState(0.0);
+  const [posZ, setPosZ] = useState(0.0);
+  const [velX, setVelX] = useState(0.0);
 
   // Control Actuators State
   const [throttleLimit, setThrottleLimit] = useState(0);
@@ -326,26 +330,26 @@ const SubmarineDashboard = () => {
       alert("Native Wi-Fi scanning requires the Electron host.");
       return;
     }
-    
+
     setIsScanningWifi(true);
     setScannedNetworks([]);
     try {
       const networks = await window.electronAPI.scanWifi();
-      
+
       // Filter out duplicate SSIDs (node-wifi often returns multiple BSSIDs for the same SSID)
       const uniqueNetworks = [];
       const seenSsids = new Set();
-      
+
       // Sort by signal_level (rssi-equivalent in node-wifi) descending
       networks.sort((a, b) => (b.signal_level || 0) - (a.signal_level || 0));
-      
+
       for (const net of networks) {
         if (net.ssid && !seenSsids.has(net.ssid)) {
           seenSsids.add(net.ssid);
           uniqueNetworks.push({ ssid: net.ssid, rssi: net.signal_level });
         }
       }
-      
+
       setScannedNetworks(uniqueNetworks);
       if (uniqueNetworks.length > 0 && !modalSsid) {
         setModalSsid(uniqueNetworks[0].ssid);
@@ -367,57 +371,63 @@ const SubmarineDashboard = () => {
     sendCommand("ESP32", payload);
   };
 
-  // Refs for persistent connection state
-  const serialWriterRef = useRef(null);
-  const serialPortRef = useRef(null);
+  // --- ELECTRON IPC LISTENERS ---
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.onImuData((data) => {
+        if (data) {
+          const p = parseFloat(data.pitch);
+          const r = parseFloat(data.roll);
+          const y = parseFloat(data.yaw);
+          if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
+            processIMU(r, p, y);
+          }
+          setPosX(parseFloat(data.posX) || 0);
+          setPosY(parseFloat(data.posY) || 0);
+          setPosZ(parseFloat(data.posZ) || 0);
+          setVelX(parseFloat(data.velX) || 0);
+          if (data.temp !== undefined) setTemp(parseFloat(data.temp));
+          if (data.lat !== undefined) setLat(parseFloat(data.lat));
+          if (data.lng !== undefined) setLng(parseFloat(data.lng));
+          if (data.sats !== undefined) setSats(parseInt(data.sats, 10));
+        }
+      });
 
-  // Helper to translate USB vendor/product IDs to user-friendly labels
-  const getUsbDeviceName = (info) => {
-    if (!info) return "Unknown Serial Port";
-    const vid = info.usbVendorId;
-    const pid = info.usbProductId;
+      window.electronAPI.onSerialStatus((status) => {
+        if (!status.connected) {
+          disconnectUsb(false);
+        }
+      });
 
-    if (!vid) return "Standard Serial Port";
-
-    let vendorName = `USB Device (VID: 0x${vid.toString(16).toUpperCase()})`;
-    if (vid === 0x1a86) vendorName = "CH340 USB-to-Serial";
-    else if (vid === 0x10c4) vendorName = "CP210x USB-to-UART";
-    else if (vid === 0x0403) vendorName = "FTDI USB-to-Serial";
-    else if (vid === 0x303a) vendorName = "Espressif ESP32 USB-Serial";
-    else if (vid === 0x2341) vendorName = "Arduino USB Device";
-
-    if (pid) {
-      return `${vendorName} (PID: 0x${pid.toString(16).toUpperCase()})`;
+      return () => {
+        window.electronAPI.removeAllListeners("imu-data");
+        window.electronAPI.removeAllListeners("serial-status");
+      };
     }
-    return vendorName;
-  };
+  }, []);
 
   const disconnectUsb = async (intentional = false) => {
-    try {
-      if (serialPortRef.current) {
-        await serialPortRef.current.close();
-      }
-    } catch (err) {
-      console.warn("Error closing port:", err);
-    } finally {
-      setIsUsbConnected(false);
-      serialWriterRef.current = null;
-      serialPortRef.current = null;
-      setHasReceivedFirstDataVal(false); // Reset calibration state on disconnect
+    if (window.electronAPI) {
+      // Do not await this. If the physical USB was removed, backend close() might hang.
+      // We want to immediately proceed to auto-reconnect without blocking.
+      window.electronAPI.disconnectSerial().catch(e => console.warn("Disconnect warn:", e));
+    }
 
-      // Stop all submarine movement for safety
-      setDriveMode("stopped");
-      setThrottleLimit(0);
-      setFrontFinAngle(0);
-      setRearFinX(0);
-      setRearFinY(0);
-      setKeyHint(
-        intentional ? "SYSTEM STOPPED" : "CONNECTION LOST - RECONNECTING...",
-      );
+    setIsUsbConnected(false);
+    setHasReceivedFirstDataVal(false); // Reset calibration state on disconnect
 
-      if (!intentional && navigator.serial) {
-        autoReconnectUsb();
-      }
+    // Stop all submarine movement for safety
+    setDriveMode("stopped");
+    setThrottleLimit(0);
+    setFrontFinAngle(0);
+    setRearFinX(0);
+    setRearFinY(0);
+    setKeyHint(
+      intentional ? "SYSTEM STOPPED" : "CONNECTION LOST - RECONNECTING...",
+    );
+
+    if (!intentional && window.electronAPI) {
+      autoReconnectUsb();
     }
   };
 
@@ -432,10 +442,11 @@ const SubmarineDashboard = () => {
     // Loop every 2 seconds until connected or user manually intervenes
     while (autoReconnectUsbRef.current) {
       try {
-        const ports = await navigator.serial.getPorts();
-        if (ports && ports.length > 0) {
-          const port = ports[0];
-          await startPortConnection(port, true);
+        if (!window.electronAPI) break;
+        const result = await window.electronAPI.connectSerial();
+        if (result.success) {
+          setIsUsbConnected(true);
+          setSignalStrength(100);
           console.log("Auto-reconnect successful!");
           autoReconnectUsbRef.current = false;
           setKeyHint("RECONNECTED SUCCESSFULLY");
@@ -451,135 +462,6 @@ const SubmarineDashboard = () => {
     autoReconnectUsbRef.current = false;
   };
 
-  const startPortConnection = async (port, isAutoReconnect = false) => {
-    try {
-      await port.open({ baudRate: 115200 });
-      serialPortRef.current = port;
-
-      // Native USB ESP32 boards require DTR to be asserted to receive serial data
-      // Some generic boards do not support this and will throw an error, so we catch and ignore it
-      try {
-        await port.setSignals({ dataTerminalReady: true, requestToSend: true });
-      } catch (err) {
-        console.warn("setSignals not supported on this port:", err.message);
-      }
-
-      // 1. Setup Writer (To send commands TO submarine)
-      const textEncoder = new TextEncoderStream();
-      textEncoder.readable.pipeTo(port.writable);
-      const writer = textEncoder.writable.getWriter();
-      serialWriterRef.current = writer;
-
-      // 2. Setup Reader (To receive telemetry FROM submarine)
-      const textDecoder = new TextDecoderStream();
-      port.readable.pipeTo(textDecoder.writable);
-      const reader = textDecoder.readable.getReader();
-
-      setIsUsbConnected(true);
-      setSignalStrength(100);
-
-      // Close selector modal
-      setShowUsbPortSelector(false);
-
-      // 3. Background Listening Loop (Runs continuously while connected)
-      let buffer = "";
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break; // Port was closed
-
-          buffer += value;
-          const lines = buffer.split("\n");
-
-          // Keep the last incomplete chunk in the buffer for the next loop
-          buffer = lines.pop();
-
-          for (let line of lines) {
-            line = line.trim();
-            // Look for our temperature tags
-            if (
-              line.startsWith("Water Temp:") ||
-              line.startsWith("TMP:") ||
-              line.startsWith("TEMP OF THE MAIN BOARD:")
-            ) {
-              let tempStr = "";
-              if (line.includes("TMP:")) tempStr = line.split("TMP:")[1];
-              else if (line.includes("Water Temp:"))
-                tempStr = line.split("Water Temp:")[1];
-              else
-                tempStr = line
-                  .split("TEMP OF THE MAIN BOARD:")[1]
-                  .replace(" °C", "");
-
-              const parsedTemp = parseFloat(tempStr);
-              if (!isNaN(parsedTemp)) {
-                setTemp(parsedTemp); // Updates the React UI instantly
-              }
-            } else if (line.startsWith("ACK:")) {
-              setLastReceived(line);
-            } else if (line.startsWith("GPS: ")) {
-              const gpsStr = line.replace("GPS: ", "").trim();
-              if (gpsStr === "WIRING_ERROR") {
-                setSats(-2); // Special code for wiring error
-              } else {
-                const parts = gpsStr.split(",");
-                if (parts.length === 2) {
-                  setLat(parseFloat(parts[0]));
-                  setLng(parseFloat(parts[1]));
-                }
-              }
-            } else if (line.startsWith("GPS_SAT: ")) {
-              setSats(parseInt(line.replace("GPS_SAT: ", "").trim()));
-            } else if (line.startsWith("IMU:")) {
-              const imuStr = line.replace("IMU:", "").trim();
-              const parts = imuStr.split(",");
-              if (parts.length === 3) {
-                const p = parseFloat(parts[0]);
-                const r = parseFloat(parts[1]);
-                const y = parseFloat(parts[2]);
-                if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-                  processIMU(r, p, y);
-                }
-              }
-            } else if (line.startsWith("MPU9250 - Pitch:")) {
-              const match = line.match(
-                /MPU9250 - Pitch:\s*([\d\.-]+)°\s*\|\s*Roll:\s*([\d\.-]+)°\s*\|\s*Yaw:\s*([\d\.-]+)°(?:\s*\|\s*Accel\(g\):\s*([\d\.-]+),([\d\.-]+),([\d\.-]+))?/,
-              );
-              if (match) {
-                const p = parseFloat(match[1]);
-                const r = parseFloat(match[2]);
-                const y = parseFloat(match[3]);
-                if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-                  processIMU(r, p, y);
-                }
-
-                if (match[4] && match[5] && match[6]) {
-                  const ax = parseFloat(match[4]);
-                  const ay = parseFloat(match[5]);
-                  const az = parseFloat(match[6]);
-                  if (!isNaN(ax) && !isNaN(ay) && !isNaN(az)) {
-                    setAccel({ x: ax, y: ay, z: az });
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Serial Read Disconnected or Error:", err);
-      } finally {
-        reader.releaseLock();
-        disconnectUsb(false); // Unintentional disconnect triggers auto-reconnect
-      }
-    } catch (err) {
-      console.error("USB Connect error:", err);
-      if (!isAutoReconnect) {
-        alert("USB Connection Failed: " + err.message);
-      }
-      throw err; // Re-throw so autoReconnectUsb loop knows it failed
-    }
-  };
-
   const connectUsb = async () => {
     if (isUsbConnected) {
       autoReconnectUsbRef.current = false; // Stop auto-reconnect if manually disconnecting
@@ -588,29 +470,23 @@ const SubmarineDashboard = () => {
     }
 
     try {
-      if (!navigator.serial) {
-        alert(
-          "Web Serial API is not supported in this browser. Please use Chrome, Edge, or Opera.",
-        );
+      if (!window.electronAPI) {
+        alert("Electron API not found. Please run this app in Electron.");
         return;
       }
 
-      // Fetch previously paired ports
-      const ports = await navigator.serial.getPorts();
-      setPairedPorts(ports);
-      setShowUsbPortSelector(true);
+      const result = await window.electronAPI.connectSerial();
+      if (result.success) {
+        setIsUsbConnected(true);
+        setSignalStrength(100);
+        setShowUsbPortSelector(false);
+      } else {
+        alert("USB Connection Failed: " + result.error);
+        autoReconnectUsb();
+      }
     } catch (err) {
-      console.error("Error listing serial ports:", err);
-      requestNewUsbPort();
-    }
-  };
-
-  const requestNewUsbPort = async () => {
-    try {
-      const port = await navigator.serial.requestPort();
-      await startPortConnection(port);
-    } catch (err) {
-      console.warn("User cancelled port selection:", err);
+      console.error("USB Connect error:", err);
+      alert("USB Connection Failed: " + err.message);
     }
   };
 
@@ -620,8 +496,8 @@ const SubmarineDashboard = () => {
     console.log(`[USB OUT] Target: ${endpoint} | Payload: ${serialPayload}`);
     setLastCommand(serialPayload);
     try {
-      if (isUsbConnected && serialWriterRef.current) {
-        await serialWriterRef.current.write(serialPayload + "\r\n");
+      if (isUsbConnected && window.electronAPI) {
+        window.electronAPI.sendSerial(serialPayload);
       } else {
         await fetch(`http://${ipAddress}${endpoint}`, {
           mode: "no-cors",
@@ -634,34 +510,53 @@ const SubmarineDashboard = () => {
     }
   };
 
+  const resetImuDrift = () => {
+    sendCommand("/reset", "RESET_POS");
+  };
+
   // --- WIFI TELEMETRY & PING LOOP ---
   useEffect(() => {
     let tickCount = 0;
+    let isFetchingImu = false;
     const pingInterval = setInterval(() => {
       if (isUsbConnected) return; // If on USB, the reader loop handles everything. Do not ping WiFi.
 
       tickCount++;
 
-      // 1. Fetch Real IMU Data (WiFi) every 1 second
-      fetch(`http://${ipAddress}/imu`, { signal: AbortSignal.timeout(800) })
-        .then((res) => {
-          if (!res.ok) throw new Error("Network response was not ok");
-          return res.json();
-        })
-        .then((data) => {
-          if (data) {
-            const p = parseFloat(data.pitch);
-            const r = parseFloat(data.roll);
-            const y = parseFloat(data.yaw);
-            if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-              processIMU(r, p, y);
+      // 1. Fetch Real IMU Data (WiFi) every 100ms
+      if (!isFetchingImu) {
+        isFetchingImu = true;
+        fetch(`http://${ipAddress}/imu`, { signal: AbortSignal.timeout(90) })
+          .then((res) => {
+            if (!res.ok) throw new Error("Network response was not ok");
+            return res.json();
+          })
+          .then((data) => {
+            if (data) {
+              const p = parseFloat(data.pitch);
+              const r = parseFloat(data.roll);
+              const y = parseFloat(data.yaw);
+              if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
+                processIMU(r, p, y);
+              }
+              setPosX(parseFloat(data.posX) || 0);
+              setPosY(parseFloat(data.posY) || 0);
+              setPosZ(parseFloat(data.posZ) || 0);
+              setVelX(parseFloat(data.velX) || 0);
+              if (data.temp !== undefined) setTemp(parseFloat(data.temp));
+              if (data.lat !== undefined) setLat(parseFloat(data.lat));
+              if (data.lng !== undefined) setLng(parseFloat(data.lng));
+              if (data.sats !== undefined) setSats(parseInt(data.sats, 10));
             }
-          }
-        })
-        .catch((err) => console.warn("IMU Fetch Error (WiFi):", err.message));
+          })
+          .catch((err) => console.warn("IMU Fetch Error (WiFi):", err.message))
+          .finally(() => {
+            isFetchingImu = false;
+          });
+      }
 
-      // 2. Ping and Temp every 2 seconds
-      if (tickCount % 2 === 0) {
+      // 2. Ping and Temp every 2 seconds (20 ticks of 100ms)
+      if (tickCount % 20 === 0) {
         // Ping the main route to check signal
         fetch(`http://${ipAddress}/`, { mode: "no-cors" })
           .then(() => setSignalStrength(100))
@@ -683,7 +578,7 @@ const SubmarineDashboard = () => {
             console.warn("Temp Fetch Error (WiFi):", err.message),
           );
       }
-    }, 1000);
+    }, 100);
     return () => clearInterval(pingInterval);
   }, [isUsbConnected, ipAddress]);
 
@@ -862,23 +757,28 @@ const SubmarineDashboard = () => {
         isUsbConnected={isUsbConnected}
         connectUsb={connectUsb}
         calibrateGyro={startCalibration}
+        resetImuDrift={resetImuDrift}
         onOpenNetworkSettings={openNetworkModal}
       />
 
       <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
-        {/* <TelemetryPanel
-            depth={depth}
-            amps={amps}
-            rpm={rpm}
-            temp={temp}
-            lat={lat}
-            lng={lng}
-            sats={sats}
-            pitch={pitch}
-            roll={roll}
-            heading={heading}
-            accel={accel}
-        /> */}
+        <TelemetryPanel
+          depth={depth}
+          amps={amps}
+          rpm={rpm}
+          temp={temp}
+          lat={lat}
+          lng={lng}
+          sats={sats}
+          pitch={pitch}
+          roll={roll}
+          heading={heading}
+          accel={accel}
+          posX={posX}
+          posY={posY}
+          posZ={posZ}
+          velX={velX}
+        />
 
         <MainCenterView
           pitch={pitch}

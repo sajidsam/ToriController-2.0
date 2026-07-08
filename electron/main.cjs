@@ -37,51 +37,131 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 
-  // Allow Web Serial API permission without blocking
-  win.webContents.session.on('select-serial-port', (event, portList, webContents, callback) => {
-    event.preventDefault();
-    console.log("AVAILABLE SERIAL PORTS:", portList);
-    
-    if (portList && portList.length > 0) {
-      // First try to match common MCU vendor IDs
-      let selectedPort = portList.find(port => 
-          (port.vendorId && (
-            port.vendorId.toLowerCase() === '10c4' || 
-            port.vendorId.toLowerCase() === '1a86' || 
-            port.vendorId.toLowerCase() === '0403' || 
-            port.vendorId.toLowerCase() === '303a' ||
-            port.vendorId.toLowerCase() === '10c4'
-          ))
+  // Remove Web Serial API session overrides since we are migrating to Node.js serialport
+}
+
+let serialPortInstance = null;
+let serialParser = null;
+
+try {
+  // Setup SerialPort integration
+  // The user must run: npm install serialport @serialport/parser-readline
+  const { SerialPort } = require('serialport');
+  const { ReadlineParser } = require('@serialport/parser-readline');
+
+  ipcMain.handle("connect-serial", async () => {
+    try {
+      const ports = await SerialPort.list();
+      console.log("AVAILABLE SERIAL PORTS:", ports);
+      
+      if (!ports || ports.length === 0) {
+        return { success: false, error: "No serial ports found!" };
+      }
+
+      let selectedPort = ports.find(port => 
+        (port.vendorId && (
+          port.vendorId.toLowerCase() === '10c4' || 
+          port.vendorId.toLowerCase() === '1a86' || 
+          port.vendorId.toLowerCase() === '0403' || 
+          port.vendorId.toLowerCase() === '303a'
+        ))
       );
       
-      // If no vendor ID matches, prioritize ports with 'usb' in the name (avoids Bluetooth ports on Mac)
       if (!selectedPort) {
-        selectedPort = portList.find(port => port.portName && port.portName.toLowerCase().includes('usb'));
+        selectedPort = ports.find(port => port.path && port.path.toLowerCase().includes('usb'));
       }
       
-      // Fallback to the first port if nothing else matches
       if (!selectedPort) {
-        selectedPort = portList[0];
+        selectedPort = ports[0];
       }
       
-      console.log("AUTO-SELECTED PORT:", selectedPort.portName, "VendorID:", selectedPort.vendorId);
-      callback(selectedPort.portId);
-    } else {
-      console.log("No serial ports found!");
-      callback(''); // Cancel if no ports
+      console.log("AUTO-SELECTED PORT:", selectedPort.path);
+
+      if (serialPortInstance && serialPortInstance.isOpen) {
+        try {
+          serialPortInstance.close();
+        } catch (e) {
+          console.warn("Failed to close existing port", e);
+        }
+      }
+
+      return new Promise((resolve, reject) => {
+        serialPortInstance = new SerialPort({ path: selectedPort.path, baudRate: 115200 }, (err) => {
+          if (err) {
+            console.error("Error opening port:", err);
+            return resolve({ success: false, error: err.message });
+          }
+
+          // Force DTR/RTS for ESP32
+          serialPortInstance.set({ dtr: true, rts: true }, (setErr) => {
+             if (setErr) console.warn("Failed to set DTR/RTS", setErr);
+          });
+
+          serialParser = serialPortInstance.pipe(new ReadlineParser({ delimiter: '\n' }));
+
+          serialParser.on('data', (line) => {
+            line = line.trim();
+            if (line.startsWith("DATA:")) {
+              try {
+                const jsonData = JSON.parse(line.substring(5));
+                if (win && !win.isDestroyed()) {
+                  win.webContents.send("imu-data", jsonData);
+                }
+              } catch (e) {
+                console.error("Failed to parse IMU JSON:", e, line);
+              }
+            }
+          });
+
+          serialPortInstance.on('error', (err) => {
+             console.error("Serial port error:", err);
+             if (win && !win.isDestroyed()) {
+               win.webContents.send("serial-status", { connected: false });
+             }
+          });
+
+          serialPortInstance.on('close', () => {
+             if (win && !win.isDestroyed()) {
+               win.webContents.send("serial-status", { connected: false });
+             }
+          });
+
+          resolve({ success: true, path: selectedPort.path });
+        });
+      });
+
+    } catch (err) {
+      console.error("Serial connection error:", err);
+      return { success: false, error: err.message };
     }
   });
 
-  win.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    if (permission === 'serial') return true;
-    return true;
+  ipcMain.handle("disconnect-serial", async () => {
+    if (serialPortInstance && serialPortInstance.isOpen) {
+      try {
+        serialPortInstance.close();
+      } catch (e) {
+        console.warn("Error closing serial port:", e);
+      }
+    }
+    return { success: true };
   });
 
-  win.webContents.session.setDevicePermissionHandler((details) => {
-    if (details.deviceType === 'serial') return true;
-    return true;
+  ipcMain.on("send-serial", (event, data) => {
+    if (serialPortInstance && serialPortInstance.isOpen) {
+      serialPortInstance.write(data + "\r\n");
+    }
   });
+
+} catch (err) {
+  console.error("Failed to initialize SerialPort. Ensure 'serialport' is installed.", err);
+  ipcMain.handle("connect-serial", async () => {
+    return { success: false, error: "SerialPort library is missing in backend. Run npm install serialport @serialport/parser-readline" };
+  });
+  ipcMain.handle("disconnect-serial", async () => { return { success: true }; });
+  ipcMain.on("send-serial", () => {});
 }
+
 
 // IPC handlers
 ipcMain.on("minimize", () => win.minimize());

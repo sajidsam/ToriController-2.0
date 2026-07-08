@@ -1,7 +1,7 @@
 import React from 'react';
-import { Waves, Zap, Gauge, Thermometer } from 'lucide-react';
+import { Waves, Zap, Gauge, Thermometer, Move3d, Activity } from 'lucide-react';
 
-const TelemetryPanel = ({ depth, amps, rpm, temp, tempError, lat, lng, sats }) => {
+const TelemetryPanel = ({ depth, amps, rpm, temp, tempError, lat, lng, sats, posX = 0, posY = 0, posZ = 0, velX = 0 }) => {
 
     // Warnings
     const highAmps = amps > 15; // Motor Stall Risk
@@ -98,7 +98,32 @@ const TelemetryPanel = ({ depth, amps, rpm, temp, tempError, lat, lng, sats }) =
                     )}
                 </div>
 
-                {/*  */}
+                {/* 3D Displacement / Position */}
+                <div className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors bg-white/5 border-white/10 text-white`}>
+                    <div className="flex items-center gap-2 text-sm font-semibold mb-1 opacity-100">
+                        <Move3d size={16} />
+                        3D DISPLACEMENT
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-white/70 font-bold uppercase">X-Axis</span>
+                            <span className="text-sm font-mono font-bold">{posX.toFixed(2)} m</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-white/70 font-bold uppercase">Y-Axis</span>
+                            <span className="text-sm font-mono font-bold">{posY.toFixed(2)} m</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-white/70 font-bold uppercase">Z-Axis</span>
+                            <span className="text-sm font-mono font-bold">{posZ.toFixed(2)} m</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1"><Activity size={10}/> Vel X</span>
+                            <span className="text-sm font-mono font-bold">{velX.toFixed(2)} m/s</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
