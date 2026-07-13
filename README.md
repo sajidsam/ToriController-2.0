@@ -20,6 +20,7 @@ ToriController 2.0 is an advanced, high-tech desktop control interface built wit
 *   **🩺 Diagnostics & Telemetry Gauges:** Real-time health monitoring including depth (m), ESC current draw (Amps), motor RPM, and internal motherboard temperature. Includes automatic warning thresholds for cavitation risk, motor stalls, and overheating.
 *   **🔌 Dual Connection Link:** Dual-routed command transmitter utilizing the **Web Serial API** for direct tethered USB communication (e.g., CH340, CP210x, ESP32 USB) or asynchronous WiFi fetch requests when untethered.
 *   **🔧 Sensor Calibration:** Guided IMU/gyroscope 10-second calibration routine to establish zero-relative pitch, roll, and yaw angles relative to flat levels.
+*   **🧭 Advanced IMU Dead Reckoning:** Custom physics engine with **ZUPT (Zero Velocity Update)**, **NHC (Non-Holonomic Constraints)**, and **Hydrodynamic Damping** to completely eliminate sensor drift and provide accurate underwater localization where GPS fails.
 
 ---
 

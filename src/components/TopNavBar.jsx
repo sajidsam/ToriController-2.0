@@ -68,15 +68,17 @@ const TopNavBar = ({
             <Settings size={14} />
             <span>CONFIG</span>
           </button>
-          <button
-            onClick={connectUsb}
-            className={`flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors ${isUsbConnected ? "bg-white text-black hover:bg-white/80" : "bg-transparent border border-white/50 text-white hover:bg-white/10"}`}
-          >
-            <Usb size={14} />
-            <span className="hidden sm:inline">
-              {isUsbConnected ? "DISCONNECT" : "CONNECT USB"}
-            </span>
-          </button>
+          {window.electronAPI && (
+            <button
+              onClick={connectUsb}
+              className={`flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors ${isUsbConnected ? "bg-white text-black hover:bg-white/80" : "bg-transparent border border-white/50 text-white hover:bg-white/10"}`}
+            >
+              <Usb size={14} />
+              <span className="hidden sm:inline">
+                {isUsbConnected ? "DISCONNECT" : "CONNECT USB"}
+              </span>
+            </button>
+          )}
           {(isUsbConnected || signalStrength > 0) && (
             <>
               <button

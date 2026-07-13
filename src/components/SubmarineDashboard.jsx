@@ -105,6 +105,9 @@ const SubmarineDashboard = () => {
   };
 
   const startCalibration = () => {
+    // Trigger ESP32 Hardware Calibration
+    sendCommand("ESP32", "CALIBRATE");
+
     setIsCalibratingVal(true);
     setIsCalibratedVal(false);
     calibrationDataRef.current = {
@@ -276,6 +279,14 @@ const SubmarineDashboard = () => {
   const [lat, setLat] = useState(0.0);
   const [lng, setLng] = useState(0.0);
   const [sats, setSats] = useState(-1);
+  const [referenceGps, setReferenceGps] = useState(null); // { lat, lng }
+  const [drLat, setDrLat] = useState(0.0);
+  const [drLng, setDrLng] = useState(0.0);
+  const [drPath, setDrPath] = useState([]); // Array of {x, y}
+  const [gpsPath, setGpsPath] = useState([]); // Array of {x, y}
+  const [computedVelocity, setComputedVelocity] = useState(0.0);
+  const [totalDistance, setTotalDistance] = useState(0.0);
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
 
   const [pitch, setPitch] = useState(0);
   const [roll, setRoll] = useState(0);
@@ -298,8 +309,9 @@ const SubmarineDashboard = () => {
   const [lastReceived, setLastReceived] = useState("None");
 
   // Connectivity State
-  const [ipAddress, setIpAddress] = useState("10.76.18.98"); // Change to your ESP32's IP
-  const [cameraUrl, setCameraUrl] = useState("http://10.73.115.219:8080/video"); // IP Webcam URL
+  const [ipAddress, setIpAddress] = useState("192.168.68.95"); // Change to your ESP32's IP
+  const [cameraUrl, setCameraUrl] = useState("http://192.168.0.141:8080/video"); // IP Webcam URL
+  const [gpsUrl, setGpsUrl] = useState("http://192.168.68.56:8080/location"); // Phone GPS URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
   const [showUsbPortSelector, setShowUsbPortSelector] = useState(false);
   const [pairedPorts, setPairedPorts] = useState([]);
@@ -307,6 +319,9 @@ const SubmarineDashboard = () => {
   const [modalIp, setModalIp] = useState("192.168.4.1");
   const [modalCameraUrl, setModalCameraUrl] = useState(
     "http://192.168.4.1:81/stream",
+  );
+  const [modalGpsUrl, setModalGpsUrl] = useState(
+    "http://192.168.68.56:8080/location",
   );
   const [modalSsid, setModalSsid] = useState("");
   const [modalPassword, setModalPassword] = useState("");
@@ -316,12 +331,14 @@ const SubmarineDashboard = () => {
   const openNetworkModal = () => {
     setModalIp(ipAddress);
     setModalCameraUrl(cameraUrl);
+    setModalGpsUrl(gpsUrl);
     setShowNetworkModal(true);
   };
 
   const saveNetworkModal = () => {
     setIpAddress(modalIp);
     setCameraUrl(modalCameraUrl);
+    setGpsUrl(modalGpsUrl);
     setShowNetworkModal(false);
   };
 
@@ -382,13 +399,16 @@ const SubmarineDashboard = () => {
           if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
             processIMU(r, p, y);
           }
+          // We are now taking posX/posY from IMU for Dead Reckoning test
           setPosX(parseFloat(data.posX) || 0);
           setPosY(parseFloat(data.posY) || 0);
           setPosZ(parseFloat(data.posZ) || 0);
           setVelX(parseFloat(data.velX) || 0);
           if (data.temp !== undefined) setTemp(parseFloat(data.temp));
-          if (data.lat !== undefined) setLat(parseFloat(data.lat));
-          if (data.lng !== undefined) setLng(parseFloat(data.lng));
+          if (data.lat !== undefined && parseFloat(data.lat) !== 0)
+            setLat(parseFloat(data.lat));
+          if (data.lng !== undefined && parseFloat(data.lng) !== 0)
+            setLng(parseFloat(data.lng));
           if (data.sats !== undefined) setSats(parseInt(data.sats, 10));
         }
       });
@@ -410,7 +430,9 @@ const SubmarineDashboard = () => {
     if (window.electronAPI) {
       // Do not await this. If the physical USB was removed, backend close() might hang.
       // We want to immediately proceed to auto-reconnect without blocking.
-      window.electronAPI.disconnectSerial().catch(e => console.warn("Disconnect warn:", e));
+      window.electronAPI
+        .disconnectSerial()
+        .catch((e) => console.warn("Disconnect warn:", e));
     }
 
     setIsUsbConnected(false);
@@ -539,13 +561,16 @@ const SubmarineDashboard = () => {
               if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
                 processIMU(r, p, y);
               }
+              // We are now taking posX/posY from IMU for Dead Reckoning test
               setPosX(parseFloat(data.posX) || 0);
               setPosY(parseFloat(data.posY) || 0);
               setPosZ(parseFloat(data.posZ) || 0);
               setVelX(parseFloat(data.velX) || 0);
               if (data.temp !== undefined) setTemp(parseFloat(data.temp));
-              if (data.lat !== undefined) setLat(parseFloat(data.lat));
-              if (data.lng !== undefined) setLng(parseFloat(data.lng));
+              if (data.lat !== undefined && parseFloat(data.lat) !== 0)
+                setLat(parseFloat(data.lat));
+              if (data.lng !== undefined && parseFloat(data.lng) !== 0)
+                setLng(parseFloat(data.lng));
               if (data.sats !== undefined) setSats(parseInt(data.sats, 10));
             }
           })
@@ -581,6 +606,173 @@ const SubmarineDashboard = () => {
     }, 100);
     return () => clearInterval(pingInterval);
   }, [isUsbConnected, ipAddress]);
+
+  // --- PHONE GPS FETCH LOOP ---
+  useEffect(() => {
+    if (!gpsUrl || gpsUrl.trim() === "") return;
+
+    let isFetchingGps = false;
+    const interval = setInterval(() => {
+      if (isFetchingGps) return;
+      isFetchingGps = true;
+      fetch(gpsUrl, { signal: AbortSignal.timeout(1500) })
+        .then((res) => res.json())
+        .then((data) => {
+          setIsPhoneConnected(true);
+          if (data.lat !== undefined && parseFloat(data.lat) !== 0)
+            setLat(parseFloat(data.lat));
+          if (data.lng !== undefined && parseFloat(data.lng) !== 0)
+            setLng(parseFloat(data.lng));
+
+          if (data.speed !== undefined) {
+            setVelX(parseFloat(data.speed));
+          }
+          if (data.heading !== undefined) {
+            let h = parseFloat(data.heading);
+            if (h < 0) h += 360;
+            setHeading(h);
+          }
+          // If we successfully get data from the phone, assume we have at least 1 satellite fix equivalent
+          setSats(1);
+        })
+        .catch((err) => {
+          setIsPhoneConnected(false);
+          // Silently ignore if phone isn't running the server yet
+        })
+        .finally(() => {
+          isFetchingGps = false;
+        });
+    }, 2000); // Fetch location every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [gpsUrl]);
+
+  // Ref to hold the latest telemetry for the DR loop without restarting it
+  const drStateRef = useRef({ heading: 0, velX: 0 });
+  useEffect(() => {
+    drStateRef.current = { heading, velX };
+  }, [heading, velX]);
+
+  const lastDrTimeRef = useRef(Date.now());
+  const drPosRef = useRef({ x: 0, y: 0, distance: 0 });
+  const lastGpsUpdateRef = useRef(null);
+
+  // Watchdog to zero out velocity if GPS signal is lost or stopped
+  useEffect(() => {
+    if (!isPhoneConnected) {
+      setVelX(0);
+      setComputedVelocity(0);
+      return;
+    }
+    const watchdog = setInterval(() => {
+      if (
+        lastGpsUpdateRef.current &&
+        Date.now() - lastGpsUpdateRef.current.time > 2000
+      ) {
+        setVelX(0);
+        setComputedVelocity(0);
+      }
+    }, 500);
+    return () => clearInterval(watchdog);
+  }, [isPhoneConnected]);
+
+  // --- DEAD RECKONING (VELOCITY & DIRECTION) LOGIC ---
+  useEffect(() => {
+    // 1. Auto-Lock Reference GPS on first valid coordinate
+    if (!referenceGps && lat !== 0 && lng !== 0) {
+      setReferenceGps({ lat, lng });
+      setDrLat(lat);
+      setDrLng(lng);
+      setPosX(0);
+      setPosY(0);
+      if (!referenceGps) {
+        drPosRef.current = { x: 0, y: 0, distance: 0 };
+        lastGpsUpdateRef.current = null;
+      }
+      lastDrTimeRef.current = Date.now();
+      console.log(`Locked Reference GPS: ${lat}, ${lng}`);
+    }
+  }, [lat, lng, referenceGps]);
+
+  // 2. Dead Reckoning Coordinate Translation (Based on ESP32 Hardware Integration)
+  useEffect(() => {
+    if (!referenceGps) return;
+
+    // Calculate final predicted coordinates (drLat, drLng) directly from hardware posX/posY
+    const LAT_DEGREE_METERS = 111320;
+    const newDrLat = referenceGps.lat + posY / LAT_DEGREE_METERS;
+    const newDrLng =
+      referenceGps.lng +
+      posX / (LAT_DEGREE_METERS * Math.cos(referenceGps.lat * (Math.PI / 180)));
+
+    setDrLat(newDrLat);
+    setDrLng(newDrLng);
+    setComputedVelocity(drStateRef.current.velX);
+
+    // Accumulate total distance incrementally based on actual hardware position shifts
+    const dx = posX - drPosRef.current.x;
+    const dy = posY - drPosRef.current.y;
+    if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+      drPosRef.current.distance += Math.sqrt(dx * dx + dy * dy);
+      setTotalDistance(drPosRef.current.distance);
+      drPosRef.current.x = posX;
+      drPosRef.current.y = posY;
+    }
+  }, [posX, posY, referenceGps]);
+
+  useEffect(() => {
+    // Add current position to path periodically to draw smooth curves
+    setDrPath((prev) => {
+      const lastPoint = prev[prev.length - 1];
+      if (lastPoint) {
+        const dist = Math.sqrt(
+          Math.pow(posX - lastPoint.x, 2) + Math.pow(posY - lastPoint.y, 2),
+        );
+        if (dist < 0.1) return prev; // Only record point if moved at least 10cm
+      }
+
+      const newPath = [...prev, { x: posX, y: posY }];
+      if (newPath.length > 50000) newPath.shift();
+      return newPath;
+    });
+  }, [posX, posY]);
+
+  // Track GPS path (no longer simulating velocity as the phone provides it directly)
+  useEffect(() => {
+    if (!referenceGps || lat === 0 || lng === 0) return;
+
+    const LAT_DEGREE_METERS = 111320;
+    const phoneX =
+      (lng - referenceGps.lng) *
+      (LAT_DEGREE_METERS * Math.cos(referenceGps.lat * (Math.PI / 180)));
+    const phoneY = (lat - referenceGps.lat) * LAT_DEGREE_METERS;
+    const now = Date.now();
+
+    if (lastGpsUpdateRef.current) {
+      const dx = phoneX - lastGpsUpdateRef.current.x;
+      const dy = phoneY - lastGpsUpdateRef.current.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      // Always reset watchdog timer when we receive a valid GPS point
+      lastGpsUpdateRef.current.time = now;
+
+      // Only add to GPS path if moved slightly
+      if (dist >= 0.01) {
+        lastGpsUpdateRef.current.x = phoneX;
+        lastGpsUpdateRef.current.y = phoneY;
+
+        setGpsPath((prev) => {
+          const newPath = [...prev, { x: phoneX, y: phoneY }];
+          if (newPath.length > 50000) newPath.shift();
+          return newPath;
+        });
+      }
+    } else {
+      // First point
+      lastGpsUpdateRef.current = { x: phoneX, y: phoneY, time: now };
+      setGpsPath((prev) => [...prev, { x: phoneX, y: phoneY }]);
+    }
+  }, [lat, lng, referenceGps]);
 
   // --- KEYBOARD CONTROLLER ---
   useEffect(() => {
@@ -778,6 +970,28 @@ const SubmarineDashboard = () => {
           posY={posY}
           posZ={posZ}
           velX={velX}
+          referenceGps={referenceGps}
+          drLat={drLat}
+          drLng={drLng}
+          drPath={drPath}
+          gpsPath={gpsPath}
+          computedVelocity={computedVelocity}
+          totalDistance={totalDistance}
+          isPhoneConnected={isPhoneConnected}
+          onResetGps={() => {
+            setReferenceGps(null);
+            setDrPath([]);
+            setGpsPath([]);
+            setTotalDistance(0.0);
+          }}
+          onResetTrack={() => {
+            sendCommand("RESET_POS\n");
+            setDrPath([]);
+            setTotalDistance(0.0);
+            drPosRef.current = { x: 0, y: 0, distance: 0 };
+            setPosX(0);
+            setPosY(0);
+          }}
         />
 
         <MainCenterView
@@ -884,39 +1098,20 @@ const SubmarineDashboard = () => {
             </div>
 
             <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-              {pairedPorts.length > 0 ? (
-                pairedPorts.map((port, idx) => {
-                  const info = port.getInfo();
-                  const name = getUsbDeviceName(info);
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => startPortConnection(port)}
-                      className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/40 p-2.5 rounded font-mono text-xs transition flex justify-between items-center group"
-                    >
-                      <span className="truncate pr-2 group-hover:text-white">
-                        {name}
-                      </span>
-                      <span className="text-[10px] text-white font-bold bg-white/20 border border-white/30 px-1.5 py-0.5 rounded shrink-0">
-                        CONNECT
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="text-center py-4 text-xs text-white/70 border border-dashed border-white/10 rounded font-mono">
-                  No previously authorized USB ports found.
-                </div>
-              )}
+              <div className="text-center py-4 text-xs text-white/40 border border-dashed border-white/10 rounded font-mono">
+                USB Connection is now handled automatically by the backend.
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
+              {/* 
               <button
                 onClick={requestNewUsbPort}
                 className="flex-1 bg-white hover:bg-white/90 text-black font-bold py-2 px-3 rounded text-xs transition font-mono uppercase tracking-wider"
               >
                 Pair New Device...
               </button>
+              */}
               <button
                 onClick={() => setShowUsbPortSelector(false)}
                 className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded text-xs transition font-mono uppercase tracking-wider border border-white/10"
@@ -966,6 +1161,19 @@ const SubmarineDashboard = () => {
                   onChange={(e) => setModalCameraUrl(e.target.value)}
                   className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
                   placeholder="http://192.168.x.x:8080/video"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-white/80 font-bold uppercase tracking-wider">
+                  Phone GPS URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={modalGpsUrl}
+                  onChange={(e) => setModalGpsUrl(e.target.value)}
+                  className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
+                  placeholder="http://192.168.x.x:8080/location"
                 />
               </div>
 

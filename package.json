@@ -14,17 +14,21 @@
         "lint": "eslint ."
     },
     "dependencies": {
+        "@capacitor/core": "^8.4.1",
+        "@capacitor/ios": "^8.4.1",
         "@serialport/parser-readline": "^13.0.0",
         "@tensorflow-models/coco-ssd": "^2.2.3",
         "@tensorflow/tfjs": "^4.22.0",
         "lucide-react": "^1.8.0",
         "node-wifi": "^2.0.16",
+        "onnxruntime-web": "^1.27.0",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
         "serialport": "^13.0.0",
         "three": "^0.185.1"
     },
     "devDependencies": {
+        "@capacitor/cli": "^8.4.1",
         "@eslint/js": "^9.39.4",
         "@tailwindcss/vite": "^4.2.2",
         "@types/react": "^19.2.14",
