@@ -3,7 +3,6 @@
 #include <AsyncTCP.h>
 #include <BasicLinearAlgebra.h>
 #include <DallasTemperature.h>
-#include <ESP32Servo.h>
 #include <ESPAsyncWebServer.h>
 #include <HTTPClient.h>
 #include <MPU9250.h>
@@ -14,12 +13,19 @@
 
 using namespace BLA;
 
+#include <NewPing.h>
+#define TRIGGER_PIN 10 // TX equivalent
+#define ECHO_PIN 14    // RX equivalent
+#define MAX_DISTANCE 400
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+bool obstacleDetected = false;
+int currentObsDist = -1;
 // --- Hardware Pins ---
-const int enablePin = 4;
-const int dirPin1 = 6;
-const int dirPin2 = 5;
-const int frontServoPin = 7;
-const int backServoPin = 8;
+const int dirPin1 = 12; // L298N IN1 (PWM Forward)
+const int dirPin2 = 13; // L298N IN2 (PWM Reverse)
+const int sharkServoPin = 4;
+const int leftServoPin = 7;
+const int rightServoPin = 8;
 const int rgbPin = 48;
 const int tempPin = 11;
 const int gpsRxPin = 38;
@@ -29,12 +35,11 @@ const int sclPin = 47;
 
 // --- PWM Constants ---
 const int pwmFreq = 5000;
-const int pwmChannel = 0;
+const int pwmChannel1 = 0;
+const int pwmChannel2 = 1;
 const int pwmResolution = 8;
 
 // --- Objects ---
-Servo frontServo;
-Servo backServo;
 AsyncWebServer server(80);
 Adafruit_NeoPixel LED_RGB(1, rgbPin, NEO_GRB + NEO_KHZ800);
 OneWire oneWire(tempPin);
@@ -47,12 +52,15 @@ MPU9250 mpu;
 void TaskCore0(void *pvParameters); // Forward declaration for FreeRTOS task
 TaskHandle_t TaskCore0Handle;
 int currentSpeed = 0;
-int targetServoAngle = 97;
-int targetBackServoAngle = 97;
+int targetLeftAngle = 97;
+int targetRightAngle = 97;
+int targetSharkAngle = 90;
 bool isStopped = true;
+bool isForward = true;
 bool hardwareUpdateRequired = false;
-bool servoUpdateRequired = false;
-bool backServoUpdateRequired = false;
+bool leftServoUpdateRequired = false;
+bool rightServoUpdateRequired = false;
+bool sharkServoUpdateRequired = false;
 bool serverIsRunning = false;
 
 // 0 = Normal, 1 = Calibrating Accel/Gyro, 2 = Calibrating Mag
@@ -86,8 +94,9 @@ BLA::Matrix<2, 2> PZ = {1.0, 0.0, 0.0, 1.0};
 // Covariance Constants
 BLA::Matrix<2, 2> Q = {0.001, 0.0, 0.0, 0.001}; // Process Noise
 BLA::Matrix<1, 1> R = {0.01};                   // Measurement Noise
-BLA::Matrix<1, 2> H = {0.0, 1.0};               // Measurement Matrix (We measure Velocity = 0)
-BLA::Matrix<1, 1> Z_meas = {0.0};               // ZUPT Measurement (Velocity is zero)
+BLA::Matrix<1, 2> H = {0.0,
+                       1.0}; // Measurement Matrix (We measure Velocity = 0)
+BLA::Matrix<1, 1> Z_meas = {0.0}; // ZUPT Measurement (Velocity is zero)
 
 // --- Navigation & Dead Reckoning Variables ---
 float velX = 0.0, velY = 0.0, velZ = 0.0;
@@ -109,22 +118,57 @@ const long serialInterval = 100;
 // --- Logic Functions ---
 void applyMotorLogic() {
   if (isStopped) {
-    ledcWrite(pwmChannel, 0);
+    ledcWrite(pwmChannel1, 0);
+    ledcWrite(pwmChannel2, 0);
   } else {
-    ledcWrite(pwmChannel, currentSpeed);
+    if (isForward) {
+      ledcWrite(pwmChannel1, currentSpeed);
+      ledcWrite(pwmChannel2, 0);
+    } else {
+      ledcWrite(pwmChannel1, 0);
+      ledcWrite(pwmChannel2, currentSpeed);
+    }
   }
+}
+
+void writeServo(int channel, int angle) {
+  // Map angle (0-180) to pulse width (500us to 2500us)
+  int pulse = map(angle, 0, 180, 500, 2500);
+  // Calculate 14-bit duty cycle (max 16383) for 50Hz (20000us period)
+  int duty = (pulse * 16383) / 20000;
+  ledcWrite(channel, duty);
 }
 
 void emergencyStop() {
   isStopped = true;
   currentSpeed = 0;
-  targetServoAngle = 97;
-  digitalWrite(dirPin1, LOW);
-  digitalWrite(dirPin2, LOW);
-  frontServo.write(97);
-  backServo.write(97);
-  applyMotorLogic();
+  targetLeftAngle = 97;
+  targetRightAngle = 97;
+  targetSharkAngle = 90;
+  isForward = true;
+  applyMotorLogic(); // Apply immediately
+  leftServoUpdateRequired = true;
+  rightServoUpdateRequired = true;
+  sharkServoUpdateRequired = true;
   Serial.println("EVENT:HALTED");
+}
+
+void handleUltrasonic() {
+  static unsigned long lastSonarTime = 0;
+  if (millis() - lastSonarTime >= 200) {
+    lastSonarTime = millis();
+    int distance = sonar.ping_median(5) / 58; // 58 for cm
+    currentObsDist = distance;
+
+    if (distance > 5 && distance < 100) {
+      if (!obstacleDetected) {
+        obstacleDetected = true;
+        emergencyStop();
+      }
+    } else {
+      obstacleDetected = false;
+    }
+  }
 }
 
 void handleTemperature() {
@@ -189,7 +233,7 @@ void handleMPU() {
       float rawAccZ = mpu.getLinearAccZ();
 
       float yaw_rad = mpuYaw * M_PI / 180.0;
-      
+
       // Transform Body Acceleration to Earth Acceleration using Yaw
       float acc_earth_x = rawAccX * cos(yaw_rad) - rawAccY * sin(yaw_rad);
       float acc_earth_y = rawAccX * sin(yaw_rad) + rawAccY * cos(yaw_rad);
@@ -210,13 +254,13 @@ void handleMPU() {
       PX = F * PX * ~F + Q;
 
       if (abs(rawAccX) < DEADBAND) { // ZUPT Update (Zero Velocity Update)
-        BLA::Matrix<1, 1> Y = Z_meas - H * stateX; // Innovation
-        BLA::Matrix<1, 1> S = H * PX * ~H + R;     // Innovation Covariance
-        BLA::Matrix<2, 1> K = PX * ~H * Inverse(S);// Kalman Gain
-        
-        stateX = stateX + K * Y;                   // State Update
-        PX = (I2 - K * H) * PX;                    // Covariance Update
-        
+        BLA::Matrix<1, 1> Y = Z_meas - H * stateX;  // Innovation
+        BLA::Matrix<1, 1> S = H * PX * ~H + R;      // Innovation Covariance
+        BLA::Matrix<2, 1> K = PX * ~H * Inverse(S); // Kalman Gain
+
+        stateX = stateX + K * Y; // State Update
+        PX = (I2 - K * H) * PX;  // Covariance Update
+
         stateX(1, 0) *= 0.85; // Additional hydrodynamic friction
       } else {
         stateX(1, 0) *= 0.98; // Continuous friction
@@ -233,10 +277,10 @@ void handleMPU() {
         BLA::Matrix<1, 1> Y = Z_meas - H * stateY;
         BLA::Matrix<1, 1> S = H * PY * ~H + R;
         BLA::Matrix<2, 1> K = PY * ~H * Inverse(S);
-        
+
         stateY = stateY + K * Y;
         PY = (I2 - K * H) * PY;
-        
+
         stateY(1, 0) *= 0.85;
       } else {
         stateY(1, 0) *= 0.98;
@@ -253,10 +297,10 @@ void handleMPU() {
         BLA::Matrix<1, 1> Y = Z_meas - H * stateZ;
         BLA::Matrix<1, 1> S = H * PZ * ~H + R;
         BLA::Matrix<2, 1> K = PZ * ~H * Inverse(S);
-        
+
         stateZ = stateZ + K * Y;
         PZ = (I2 - K * H) * PZ;
-        
+
         stateZ(1, 0) *= 0.85;
       } else {
         stateZ(1, 0) *= 0.98;
@@ -312,9 +356,13 @@ void sendTelemetry() {
   json += "\"posY\":" + String(posY, 4) + ",";
   json += "\"posZ\":" + String(posZ, 4) + ",";
   json += "\"velX\":" + String(velX, 4) + ",";
+  json += "\"leftAngle\":" + String(targetLeftAngle) + ",";
+  json += "\"rightAngle\":" + String(targetRightAngle) + ",";
+  json += "\"sharkAngle\":" + String(targetSharkAngle) + ",";
   json += "\"lat\":" + String(currentLat, 6) + ",";
   json += "\"lng\":" + String(currentLng, 6) + ",";
   json += "\"temp\":" + String(currentTemp, 2) + ",";
+  json += "\"obsDist\":" + String(currentObsDist) + ",";
   json += "\"cal\":" + String(calibrationState); // Added Calibration State
   json += "}";
 
@@ -360,16 +408,20 @@ void setup() {
   delay(2000);
 
   tempSensor.begin();
+  tempSensor.setWaitForConversion(false); // Make it non-blocking
 
-  ledcSetup(pwmChannel, pwmFreq, pwmResolution);
-  ledcAttachPin(enablePin, pwmChannel);
-  pinMode(dirPin1, OUTPUT);
-  pinMode(dirPin2, OUTPUT);
+  ledcSetup(pwmChannel1, pwmFreq, pwmResolution);
+  ledcSetup(pwmChannel2, pwmFreq, pwmResolution);
+  ledcAttachPin(dirPin1, pwmChannel1);
+  ledcAttachPin(dirPin2, pwmChannel2);
 
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  frontServo.attach(frontServoPin, 500, 2400);
-  backServo.attach(backServoPin, 500, 2500);
+  // Remove ESP32Servo and use Native LEDC to avoid S3 Timer bugs
+  ledcSetup(2, 50, 14); // Channel 2, 50Hz, 14-bit
+  ledcSetup(3, 50, 14); // Channel 3, 50Hz, 14-bit
+  ledcSetup(4, 50, 14); // Channel 4, 50Hz, 14-bit
+  ledcAttachPin(leftServoPin, 2);
+  ledcAttachPin(rightServoPin, 3);
+  ledcAttachPin(sharkServoPin, 4);
 
   emergencyStop();
 
@@ -407,12 +459,81 @@ void setup() {
     json += "\"posY\":" + String(posY, 4) + ",";
     json += "\"posZ\":" + String(posZ, 4) + ",";
     json += "\"velX\":" + String(velX, 4) + ",";
-    json += "\"lat\":" + String(currentLat, 6) + ",";
-    json += "\"lng\":" + String(currentLng, 6) + ",";
+    json += "\"leftAngle\":" + String(targetLeftAngle) + ",";
+    json += "\"rightAngle\":" + String(targetRightAngle) + ",";
+    json += "\"sharkAngle\":" + String(targetSharkAngle) + ",";
     json += "\"temp\":" + String(currentTemp, 2) + ",";
+    json += "\"obsDist\":" + String(currentObsDist) + ",";
     json += "\"cal\":" + String(calibrationState); // Send Cal State via Web
     json += "}";
     request->send(200, "application/json", json);
+  });
+
+  server.on("/left_servo", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("val")) {
+      targetLeftAngle = request->getParam("val")->value().toInt();
+      leftServoUpdateRequired = true;
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(400, "text/plain", "Missing val");
+    }
+  });
+
+  server.on("/right_servo", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("val")) {
+      targetRightAngle = request->getParam("val")->value().toInt();
+      rightServoUpdateRequired = true;
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(400, "text/plain", "Missing val");
+    }
+  });
+
+  server.on("/shark_servo", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("val")) {
+      targetSharkAngle = request->getParam("val")->value().toInt();
+      sharkServoUpdateRequired = true;
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(400, "text/plain", "Missing val");
+    }
+  });
+
+  server.on("/action", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("dir")) {
+      String dir = request->getParam("dir")->value();
+      if (dir == "forward") {
+        isForward = true;
+        isStopped = false;
+      } else if (dir == "reverse") {
+        isForward = false;
+        isStopped = false;
+      } else if (dir == "stopped") {
+        isStopped = true;
+        currentSpeed = 0;
+        targetLeftAngle = 97;
+        targetRightAngle = 97;
+        targetSharkAngle = 90;
+        isForward = true;
+        leftServoUpdateRequired = true;
+        rightServoUpdateRequired = true;
+        sharkServoUpdateRequired = true;
+      }
+      hardwareUpdateRequired = true;
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(400, "text/plain", "Missing dir");
+    }
+  });
+
+  server.on("/speed", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("val")) {
+      currentSpeed = request->getParam("val")->value().toInt();
+      hardwareUpdateRequired = true;
+      request->send(200, "text/plain", "OK");
+    } else {
+      request->send(400, "text/plain", "Missing val");
+    }
   });
 
   Serial.println("Ready for commands.");
@@ -468,16 +589,21 @@ void loop() {
     applyMotorLogic();
     hardwareUpdateRequired = false;
   }
-  if (servoUpdateRequired) {
-    frontServo.write(targetServoAngle);
-    servoUpdateRequired = false;
+  if (leftServoUpdateRequired) {
+    writeServo(2, targetLeftAngle);
+    leftServoUpdateRequired = false;
   }
-  if (backServoUpdateRequired) {
-    backServo.write(targetBackServoAngle);
-    backServoUpdateRequired = false;
+  if (rightServoUpdateRequired) {
+    writeServo(3, targetRightAngle);
+    rightServoUpdateRequired = false;
+  }
+  if (sharkServoUpdateRequired) {
+    writeServo(4, targetSharkAngle);
+    sharkServoUpdateRequired = false;
   }
 
   // Only Fast, Non-Blocking, Real-Time tasks remain in Core 1 Loop
+  handleUltrasonic();
   handleMPU();
 
   // --- USB / Serial Telemetry Streaming ---
@@ -500,38 +626,40 @@ void processSerialCommand(String cmd) {
       connectToWiFi(reqSSID, reqPass);
     }
   } else if (cmd == "DIR:FWD") {
-    digitalWrite(dirPin1, HIGH);
-    digitalWrite(dirPin2, LOW);
+    isForward = true;
     isStopped = false;
     hardwareUpdateRequired = true;
   } else if (cmd == "DIR:REV") {
-    digitalWrite(dirPin1, LOW);
-    digitalWrite(dirPin2, HIGH);
+    isForward = false;
     isStopped = false;
     hardwareUpdateRequired = true;
   } else if (cmd.startsWith("SPD:")) {
     currentSpeed = cmd.substring(4).toInt();
     hardwareUpdateRequired =
         true; // Use flag to trigger applyMotorLogic safely on Core 1
-  } else if (cmd.startsWith("F_SRV:")) {
-    targetServoAngle = cmd.substring(6).toInt();
-    servoUpdateRequired = true;
-  } else if (cmd.startsWith("B_SRV:")) {
-    targetBackServoAngle = cmd.substring(6).toInt();
-    backServoUpdateRequired = true;
+  } else if (cmd.startsWith("L_SRV:")) {
+    targetLeftAngle = cmd.substring(6).toInt();
+    leftServoUpdateRequired = true;
+  } else if (cmd.startsWith("R_SRV:")) {
+    targetRightAngle = cmd.substring(6).toInt();
+    rightServoUpdateRequired = true;
+  } else if (cmd.startsWith("S_SRV:")) {
+    targetSharkAngle = cmd.substring(6).toInt();
+    sharkServoUpdateRequired = true;
   } else if (cmd == "STOP") {
     // Cannot safely call emergencyStop() from Core 0 because it modifies
     // servos/PWM directly. Instead set the target states and flags to let Core
     // 1 handle it.
     isStopped = true;
     currentSpeed = 0;
-    targetServoAngle = 97;
-    targetBackServoAngle = 97;
-    digitalWrite(dirPin1, LOW);
-    digitalWrite(dirPin2, LOW);
+    targetLeftAngle = 97;
+    targetRightAngle = 97;
+    targetSharkAngle = 90;
+    isForward = true;
     hardwareUpdateRequired = true;
-    servoUpdateRequired = true;
-    backServoUpdateRequired = true;
+    leftServoUpdateRequired = true;
+    rightServoUpdateRequired = true;
+    sharkServoUpdateRequired = true;
   } else if (cmd == "RESET_POS") {
     posX = 0;
     posY = 0;
@@ -578,11 +706,13 @@ void TaskCore0(void *pvParameters) {
     // Read GPS Serial (Slow: 9600 baud processing)
     handleGPS();
 
-    // Read USB Commands
-    if (Serial.available() > 0) {
+    // Read USB Commands - DRAIN THE BUFFER
+    while (Serial.available() > 0) {
       String cmd = Serial.readStringUntil('\n');
       cmd.trim();
-      processSerialCommand(cmd);
+      if (cmd.length() > 0) {
+        processSerialCommand(cmd);
+      }
     }
 
     // Feed the watchdog timer to prevent crashes on Core 0
