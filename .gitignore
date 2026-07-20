@@ -62,3 +62,4 @@ Thumbs.db
 !electron/*.cjs
 !src/main.jsx
 !src/App.jsx
+.venv/
