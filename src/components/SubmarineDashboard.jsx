@@ -138,7 +138,7 @@ const SubmarineDashboard = () => {
 
         // Clean v prefix if present
         const cleanLatest = latest.replace(/^v/, "");
-        const cleanCurrent = "2.0.2"; // Matches package.json
+        const cleanCurrent = "2.0.5"; // Matches package.json
 
         if (cleanLatest !== cleanCurrent) {
           const latestParts = cleanLatest.split(".").map(Number);
@@ -1301,7 +1301,7 @@ const SubmarineDashboard = () => {
               </p>
               <div className="flex justify-center gap-4 text-[11px] font-mono mt-2 bg-white/5 border border-white/10 py-1.5 px-3 rounded">
                 <span>
-                  CURRENT: <span className="font-bold">v2.0.1</span>
+                  CURRENT: <span className="font-bold">v2.0.5</span>
                 </span>
                 <span className="text-white/40">|</span>
                 <span>
