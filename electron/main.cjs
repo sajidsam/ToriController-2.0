@@ -108,7 +108,7 @@ try {
                   win.webContents.send("imu-data", jsonData);
                 }
               } catch (e) {
-                console.error("Failed to parse IMU JSON:", e, line);
+                console.error("Failed to parse IMU JSON (dropped frame):", e.message);
               }
             }
           });
