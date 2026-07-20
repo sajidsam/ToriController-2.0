@@ -38,7 +38,7 @@ const AdvancedRadarNavigation = ({
   }, [selectedTarget]);
 
   return (
-    <div className="flex flex-col gap-2 bg-gradient-to-b from-black/40 to-black/60 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 w-full lg:w-[280px] xl:w-[340px] shrink-0 lg:h-full lg:max-h-full min-h-0">
+    <div className="flex flex-col bg-gradient-to-b from-black/40 to-black/60 backdrop-blur-md overflow-hidden shadow-2xl w-full h-full min-h-0">
       {/* Header */}
       <div className="px-3 py-2 bg-black/60 border-b border-white/10 flex items-center justify-between shrink-0">
         <div>
@@ -51,42 +51,45 @@ const AdvancedRadarNavigation = ({
         </div>
       </div>
 
-      {/* Main Radar Display */}
-      <div className="px-3 pt-3 w-full flex-1 min-h-[120px] radar-display-container">
-        <div className="w-full h-full rounded border border-white/20 overflow-hidden bg-black">
-          <RadarDisplay
+      {/* Main Content Area: Side by Side */}
+      <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
+        {/* Main Radar Display (Left side) */}
+        <div className="flex-1 p-3 sm:border-r border-b sm:border-b-0 border-white/10 flex items-center justify-center min-h-[200px]">
+          <div className="w-full h-full rounded border border-white/20 overflow-hidden bg-black flex items-center justify-center relative">
+            <RadarDisplay
+              range={range}
+              gain={gain}
+              mode={mode}
+              heading={heading}
+              speedKnots={speedKnots}
+              depth={depth}
+              amps={amps}
+              selectedTarget={selectedTarget}
+              onTargetSelect={handleTargetSelect}
+            />
+          </div>
+        </div>
+
+        {/* Controls & Info Panels (Right side) */}
+        <div className="w-full sm:w-[260px] p-3 flex flex-col gap-2 shrink-0 overflow-y-auto">
+          {/* Controls */}
+          <RadarControls
             range={range}
+            onRangeChange={setRange}
             gain={gain}
+            onGainChange={setGain}
             mode={mode}
-            heading={heading}
-            speedKnots={speedKnots}
-            depth={depth}
+            onModeChange={setMode}
             amps={amps}
+          />
+
+          {/* Target Info Panel */}
+          <TargetInfoPanel
             selectedTarget={selectedTarget}
-            onTargetSelect={handleTargetSelect}
+            targets={targets}
+            mode={mode}
           />
         </div>
-      </div>
-
-      {/* Controls & Info Panels */}
-      <div className="px-3 pb-3 flex flex-col gap-2 shrink-0 radar-container">
-        {/* Controls */}
-        <RadarControls
-          range={range}
-          onRangeChange={setRange}
-          gain={gain}
-          onGainChange={setGain}
-          mode={mode}
-          onModeChange={setMode}
-          amps={amps}
-        />
-
-        {/* Target Info Panel */}
-        <TargetInfoPanel
-          selectedTarget={selectedTarget}
-          targets={targets}
-          mode={mode}
-        />
       </div>
     </div>
   );

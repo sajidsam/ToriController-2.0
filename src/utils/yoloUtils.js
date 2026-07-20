@@ -54,25 +54,34 @@ export async function detectObjects(session, data, minScore = 0.4) {
       }
     }
   } 
-  // Handle standard YOLOv8 shape: [1, 84, 8400]
-  else if (dims.length === 3 && dims[1] === 84 && dims[2] === 8400) {
+  // Handle YOLOv8 shape: [1, num_classes + 4, 8400]
+  else if (dims.length === 3 && dims[2] === 8400) {
+    const numRows = dims[1];
+    const numCols = dims[2];
     const tempBoxes = [];
-    for (let col = 0; col < 8400; col++) {
+    
+    let absoluteMaxProb = 0;
+    
+    for (let col = 0; col < numCols; col++) {
       let maxProb = 0;
       let maxClass = -1;
-      for (let row = 4; row < 84; row++) {
-        const prob = output[row * 8400 + col];
+      for (let row = 4; row < numRows; row++) {
+        const prob = output[row * numCols + col];
         if (prob > maxProb) {
           maxProb = prob;
           maxClass = row - 4;
         }
       }
       
+      if (maxProb > absoluteMaxProb) {
+        absoluteMaxProb = maxProb;
+      }
+      
       if (maxProb >= minScore) {
-        const xc = output[0 * 8400 + col];
-        const yc = output[1 * 8400 + col];
-        const w = output[2 * 8400 + col];
-        const h = output[3 * 8400 + col];
+        const xc = output[0 * numCols + col];
+        const yc = output[1 * numCols + col];
+        const w = output[2 * numCols + col];
+        const h = output[3 * numCols + col];
         
         const x1 = xc - w / 2;
         const y1 = yc - h / 2;
@@ -89,6 +98,8 @@ export async function detectObjects(session, data, minScore = 0.4) {
     const iouThreshold = 0.45;
     tempBoxes.sort((a, b) => b.score - a.score);
     
+    console.log(`[YOLO Debug] absoluteMaxProb across all 8400 boxes:`, absoluteMaxProb);
+    
     while (tempBoxes.length > 0) {
       const current = tempBoxes.shift();
       boxes.push(current);
@@ -102,6 +113,8 @@ export async function detectObjects(session, data, minScore = 0.4) {
         }
       }
     }
+  } else {
+    throw new Error(`Unknown model output shape: ${dims.join("x")}`);
   }
   
   return boxes;

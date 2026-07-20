@@ -275,6 +275,7 @@ const SubmarineDashboard = () => {
   const [amps, setAmps] = useState(3.2);
   const [rpm, setRpm] = useState(1200);
   const [temp, setTemp] = useState(0.0);
+  const [tempError, setTempError] = useState("");
   const [speedKnots, setSpeedKnots] = useState(0);
   const [lat, setLat] = useState(0.0);
   const [lng, setLng] = useState(0.0);
@@ -282,6 +283,7 @@ const SubmarineDashboard = () => {
   const [referenceGps, setReferenceGps] = useState(null); // { lat, lng }
   const [drLat, setDrLat] = useState(0.0);
   const [drLng, setDrLng] = useState(0.0);
+  const [obsDist, setObsDist] = useState(-1);
   const [drPath, setDrPath] = useState([]); // Array of {x, y}
   const [gpsPath, setGpsPath] = useState([]); // Array of {x, y}
   const [computedVelocity, setComputedVelocity] = useState(0.0);
@@ -299,18 +301,43 @@ const SubmarineDashboard = () => {
 
   // Control Actuators State
   const [throttleLimit, setThrottleLimit] = useState(0);
-  const [frontFinAngle, setFrontFinAngle] = useState(0); // Center is 0 (mapped to 97 later)
-  const [rearFinX, setRearFinX] = useState(0);
-  const [rearFinY, setRearFinY] = useState(0);
+  const [bowAngle, setBowAngle] = useState(0); // Center is 0 (mapped to 97 later)
+  const [sharkAngle, setSharkAngle] = useState(90);
   const [ballastActive, setBallastActive] = useState(false);
   const [driveMode, setDriveMode] = useState("stopped"); // 'forward', 'reverse', 'stopped'
   const [keyHint, setKeyHint] = useState("Use ↑ ↓ ← → and Spacebar");
   const [lastCommand, setLastCommand] = useState("None");
   const [lastReceived, setLastReceived] = useState("None");
 
-  // Connectivity State
-  const [ipAddress, setIpAddress] = useState("192.168.68.95"); // Change to your ESP32's IP
-  const [cameraUrl, setCameraUrl] = useState("http://192.168.0.141:8080/video"); // IP Webcam URL
+  const [ipHistory, setIpHistory] = useState(() => {
+    try {
+      const hist = localStorage.getItem("ipHistory");
+      return hist
+        ? JSON.parse(hist)
+        : ["10.64.106.116", "192.168.4.1", "192.168.68.95", "192.168.0.141"];
+    } catch {
+      return ["10.64.106.116", "192.168.4.1", "192.168.68.95"];
+    }
+  });
+  const [ipAddress, setIpAddress] = useState(ipHistory[0] || "192.168.4.1"); // ESP32's IP
+  const [cameraHistory, setCameraHistory] = useState(() => {
+    try {
+      const hist = localStorage.getItem("cameraHistory");
+      return hist
+        ? JSON.parse(hist)
+        : [
+            "http://10.64.106.116:81/stream",
+            "http://192.168.0.141:8080/video",
+            "/test_video.mp4",
+            "http://192.168.4.1:81/stream",
+          ];
+    } catch {
+      return ["http://10.64.106.116:81/stream", "http://192.168.0.141:8080/video", "/test_video.mp4"];
+    }
+  });
+  const [cameraUrl, setCameraUrl] = useState(
+    cameraHistory[0] || "http://192.168.0.141:8080/video",
+  ); // IP Webcam URL
   const [gpsUrl, setGpsUrl] = useState("http://192.168.68.56:8080/location"); // Phone GPS URL
   const [isUsbConnected, setIsUsbConnected] = useState(false);
   const [showUsbPortSelector, setShowUsbPortSelector] = useState(false);
@@ -337,8 +364,27 @@ const SubmarineDashboard = () => {
 
   const saveNetworkModal = () => {
     setIpAddress(modalIp);
-    setCameraUrl(modalCameraUrl);
     setGpsUrl(modalGpsUrl);
+    setCameraUrl(modalCameraUrl);
+
+    setCameraHistory((prev) => {
+      const newHist = [
+        modalCameraUrl,
+        ...prev.filter((u) => u !== modalCameraUrl),
+      ].slice(0, 10);
+      localStorage.setItem("cameraHistory", JSON.stringify(newHist));
+      return newHist;
+    });
+
+    setIpHistory((prev) => {
+      const newHist = [modalIp, ...prev.filter((u) => u !== modalIp)].slice(
+        0,
+        10,
+      );
+      localStorage.setItem("ipHistory", JSON.stringify(newHist));
+      return newHist;
+    });
+
     setShowNetworkModal(false);
   };
 
@@ -397,7 +443,7 @@ const SubmarineDashboard = () => {
           const r = parseFloat(data.roll);
           const y = parseFloat(data.yaw);
           if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-            processIMU(r, p, y);
+            processIMU(p, r, y);
           }
           // We are now taking posX/posY from IMU for Dead Reckoning test
           setPosX(parseFloat(data.posX) || 0);
@@ -405,6 +451,8 @@ const SubmarineDashboard = () => {
           setPosZ(parseFloat(data.posZ) || 0);
           setVelX(parseFloat(data.velX) || 0);
           if (data.temp !== undefined) setTemp(parseFloat(data.temp));
+          if (data.obsDist !== undefined)
+            setObsDist(parseInt(data.obsDist, 10));
           if (data.lat !== undefined && parseFloat(data.lat) !== 0)
             setLat(parseFloat(data.lat));
           if (data.lng !== undefined && parseFloat(data.lng) !== 0)
@@ -438,12 +486,9 @@ const SubmarineDashboard = () => {
     setIsUsbConnected(false);
     setHasReceivedFirstDataVal(false); // Reset calibration state on disconnect
 
-    // Stop all submarine movement for safety
     setDriveMode("stopped");
     setThrottleLimit(0);
-    setFrontFinAngle(0);
-    setRearFinX(0);
-    setRearFinY(0);
+    setBowAngle(0);
     setKeyHint(
       intentional ? "SYSTEM STOPPED" : "CONNECTION LOST - RECONNECTING...",
     );
@@ -559,7 +604,7 @@ const SubmarineDashboard = () => {
               const r = parseFloat(data.roll);
               const y = parseFloat(data.yaw);
               if (!isNaN(p) && !isNaN(r) && !isNaN(y)) {
-                processIMU(r, p, y);
+                processIMU(p, r, y);
               }
               // We are now taking posX/posY from IMU for Dead Reckoning test
               setPosX(parseFloat(data.posX) || 0);
@@ -567,6 +612,8 @@ const SubmarineDashboard = () => {
               setPosZ(parseFloat(data.posZ) || 0);
               setVelX(parseFloat(data.velX) || 0);
               if (data.temp !== undefined) setTemp(parseFloat(data.temp));
+              if (data.obsDist !== undefined)
+                setObsDist(parseInt(data.obsDist, 10));
               if (data.lat !== undefined && parseFloat(data.lat) !== 0)
                 setLat(parseFloat(data.lat));
               if (data.lng !== undefined && parseFloat(data.lng) !== 0)
@@ -783,59 +830,55 @@ const SubmarineDashboard = () => {
 
       switch (e.key.toLowerCase()) {
         case "w":
-          e.preventDefault();
-          setDriveMode("forward");
-          setThrottleLimit((prev) => Math.min(Number(prev) + 2, 100));
-          setKeyHint("Moving Forward (Speed Up)");
-          break;
-        case "s":
+        case "arrowup":
           e.preventDefault();
           setThrottleLimit((prev) => {
-            const newLimit = Math.max(Number(prev) - 2, 0);
-            if (newLimit === 0) setDriveMode("stopped");
+            const newLimit = Math.min(Number(prev) + 5, 100);
+            if (newLimit > 0) setDriveMode("forward");
+            else if (newLimit < 0) setDriveMode("reverse");
+            else setDriveMode("stopped");
             return newLimit;
           });
-          setKeyHint("Moving Forward (Speed Down)");
+          setKeyHint("Throttle Up");
+          break;
+        case "s":
+        case "arrowdown":
+          e.preventDefault();
+          setThrottleLimit((prev) => {
+            const newLimit = Math.max(Number(prev) - 5, -100);
+            if (newLimit > 0) setDriveMode("forward");
+            else if (newLimit < 0) setDriveMode("reverse");
+            else setDriveMode("stopped");
+            return newLimit;
+          });
+          setKeyHint("Throttle Down");
           break;
         case "a":
           e.preventDefault();
-          setFrontFinAngle((prev) => Math.max(Number(prev) - 10, -30));
-          setRearFinX((prev) => Math.min(Number(prev) + 10, 30));
+          setBowAngle((prev) => Math.max(Number(prev) - 10, -30));
           setKeyHint("Steering Left");
-          break;
-        case "d":
-          e.preventDefault();
-          setFrontFinAngle((prev) => Math.min(Number(prev) + 10, 30));
-          setRearFinX((prev) => Math.max(Number(prev) - 10, -30));
-          setKeyHint("Steering Right");
-          break;
-        case "arrowup":
-          e.preventDefault();
-          setRearFinY((prev) => Math.min(Number(prev) + 5, 45));
-          setKeyHint("Empennage Pitch Up");
-          break;
-        case "arrowdown":
-          e.preventDefault();
-          setRearFinY((prev) => Math.max(Number(prev) - 5, -45));
-          setKeyHint("Empennage Pitch Down");
           break;
         case "arrowleft":
           e.preventDefault();
-          setRearFinX((prev) => Math.max(Number(prev) - 5, -45));
-          setKeyHint("Empennage Yaw Left");
+          setSharkAngle((prev) => Math.max(Number(prev) - 10, 0));
+          setKeyHint("Shark Steering Left");
+          break;
+        case "d":
+          e.preventDefault();
+          setBowAngle((prev) => Math.min(Number(prev) + 10, 30));
+          setKeyHint("Steering Right");
           break;
         case "arrowright":
           e.preventDefault();
-          setRearFinX((prev) => Math.min(Number(prev) + 5, 45));
-          setKeyHint("Empennage Yaw Right");
+          setSharkAngle((prev) => Math.min(Number(prev) + 10, 180));
+          setKeyHint("Shark Steering Right");
           break;
         case " ": // Spacebar
           e.preventDefault();
           setDriveMode("stopped");
           setThrottleLimit(0);
-          setFrontFinAngle(0);
-          setRearFinX(0);
-          setRearFinY(0);
+          setBowAngle(0);
+          setSharkAngle(90);
           setKeyHint("SYSTEM STOPPED");
           break;
         default:
@@ -860,30 +903,22 @@ const SubmarineDashboard = () => {
   // Speed (PWM ranges 0-255)
   useEffect(() => {
     if (driveMode === "stopped") return;
-    const speedPWM = Math.round((throttleLimit / 100) * 255);
-    const timer = setTimeout(() => {
-      sendCommand(`/speed?val=${speedPWM}`, `SPD:${speedPWM}`);
-    }, 50); // 50ms debounce
-    return () => clearTimeout(timer);
+    const speedPWM = Math.round((Math.abs(throttleLimit) / 100) * 255);
+    sendCommand(`/speed?val=${speedPWM}`, `SPD:${speedPWM}`);
   }, [throttleLimit, driveMode]);
 
-  // Front Fin (Bow Planes)
+  // Front Fins (Left and Right Bow Servos)
   useEffect(() => {
-    const angle = 97 + frontFinAngle;
-    const timer = setTimeout(() => {
-      sendCommand(`/servo?target=front&val=${angle}`, `F_SRV:${angle}`);
-    }, 50); // 50ms debounce
-    return () => clearTimeout(timer);
-  }, [frontFinAngle]);
+    const leftA = 97 + bowAngle;
+    const rightA = 97 - bowAngle; // 194 - (97 + bowAngle)
+    sendCommand(`/left_servo?val=${leftA}`, `L_SRV:${leftA}`);
+    sendCommand(`/right_servo?val=${rightA}`, `R_SRV:${rightA}`);
+  }, [bowAngle]);
 
-  // Back Fin (Rudder)
+  // Shark Fin (Tail Servo)
   useEffect(() => {
-    const angle = 97 + rearFinX;
-    const timer = setTimeout(() => {
-      sendCommand(`/servo?target=back&val=${angle}`, `B_SRV:${angle}`);
-    }, 50); // 50ms debounce
-    return () => clearTimeout(timer);
-  }, [rearFinX]);
+    sendCommand(`/shark_servo?val=${sharkAngle}`, `S_SRV:${sharkAngle}`);
+  }, [sharkAngle]);
 
   // --- UI SIMULATION EFFECT (Adds "life" to the dashboard) ---
   useEffect(() => {
@@ -902,10 +937,13 @@ const SubmarineDashboard = () => {
       }
 
       let targetRpm =
-        driveMode === "stopped" ? 0 : Math.max(0, throttleLimit * 210);
+        driveMode === "stopped"
+          ? 0
+          : Math.max(0, Math.abs(throttleLimit) * 210);
       let targetSpeed =
-        driveMode === "stopped" ? 0 : (throttleLimit / 100) * 7.5;
-      let targetAmps = driveMode === "stopped" ? 0 : (throttleLimit / 100) * 12;
+        driveMode === "stopped" ? 0 : (Math.abs(throttleLimit) / 100) * 7.5;
+      let targetAmps =
+        driveMode === "stopped" ? 0 : (Math.abs(throttleLimit) / 100) * 12;
 
       setRpm(
         (prev) =>
@@ -959,6 +997,8 @@ const SubmarineDashboard = () => {
           amps={amps}
           rpm={rpm}
           temp={temp}
+          obsDist={obsDist}
+          tempError={tempError}
           lat={lat}
           lng={lng}
           sats={sats}
@@ -999,9 +1039,7 @@ const SubmarineDashboard = () => {
           roll={roll}
           heading={heading}
           speedKnots={speedKnots}
-          frontFinAngle={frontFinAngle}
-          rearFinX={rearFinX}
-          rearFinY={rearFinY}
+          bowAngle={bowAngle}
           cameraUrl={cameraUrl}
           depth={depth}
           amps={amps}
@@ -1012,12 +1050,10 @@ const SubmarineDashboard = () => {
         <ControlPanel
           throttleLimit={throttleLimit}
           setThrottleLimit={setThrottleLimit}
-          frontFinAngle={frontFinAngle}
-          setFrontFinAngle={setFrontFinAngle}
-          rearFinX={rearFinX}
-          setRearFinX={setRearFinX}
-          rearFinY={rearFinY}
-          setRearFinY={setRearFinY}
+          bowAngle={bowAngle}
+          setBowAngle={setBowAngle}
+          sharkAngle={sharkAngle}
+          setSharkAngle={setSharkAngle}
           ballastActive={ballastActive}
           setBallastActive={setBallastActive}
           driveMode={driveMode}
@@ -1144,11 +1180,17 @@ const SubmarineDashboard = () => {
                 </label>
                 <input
                   type="text"
+                  list="ip-history"
                   value={modalIp}
                   onChange={(e) => setModalIp(e.target.value)}
                   className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
                   placeholder="192.168.x.x"
                 />
+                <datalist id="ip-history">
+                  {ipHistory.map((ip, idx) => (
+                    <option key={idx} value={ip} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="flex flex-col gap-1">
@@ -1157,11 +1199,17 @@ const SubmarineDashboard = () => {
                 </label>
                 <input
                   type="text"
+                  list="camera-history"
                   value={modalCameraUrl}
                   onChange={(e) => setModalCameraUrl(e.target.value)}
                   className="bg-white/5 border border-white/20 p-2.5 rounded text-white font-mono outline-none text-xs focus:border-white transition-colors"
-                  placeholder="http://192.168.x.x:8080/video"
+                  placeholder="http://192.168.x.x:8080/video or /test_video.mp4"
                 />
+                <datalist id="camera-history">
+                  {cameraHistory.map((url, idx) => (
+                    <option key={idx} value={url} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="flex flex-col gap-1">

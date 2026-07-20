@@ -5,8 +5,8 @@ let session = null;
 
 async function initModel() {
   try {
-    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
-    session = await ort.InferenceSession.create("/YOLOv26s.onnx", {
+    ort.env.wasm.wasmPaths = "/";
+    session = await ort.InferenceSession.create("/yolov8n.onnx", {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all",
     });
@@ -20,7 +20,7 @@ async function initModel() {
 initModel();
 
 self.onmessage = async (e) => {
-  const { type, pixels, width, height } = e.data;
+  const { type, pixels, width, height, nw, nh, yoloScale, yoloOx, yoloOy } = e.data;
   
   if (type === "detect") {
     if (!session) {
@@ -32,7 +32,7 @@ self.onmessage = async (e) => {
       const boxes = await detectObjects(session, pixels, 0.4);
       
       // Send the unscaled boxes back to the main thread
-      postMessage({ type: "result", boxes, width, height });
+      postMessage({ type: "result", boxes, width, height, nw, nh, yoloScale, yoloOx, yoloOy });
     } catch (e) {
       postMessage({ type: "error", message: e.message });
     }

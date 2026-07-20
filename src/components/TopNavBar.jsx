@@ -21,7 +21,9 @@ const TopNavBar = ({
   batteryPct,
   isLeaking,
   isUsbConnected,
+  isWifiConnected,
   connectUsb,
+  toggleWifi,
   calibrateGyro,
   resetImuDrift,
   onOpenNetworkSettings,
@@ -76,6 +78,17 @@ const TopNavBar = ({
               <Usb size={14} />
               <span className="hidden sm:inline">
                 {isUsbConnected ? "DISCONNECT" : "CONNECT USB"}
+              </span>
+            </button>
+          )}
+          {!isUsbConnected && (
+            <button
+              onClick={toggleWifi}
+              className={`flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors ${isWifiConnected ? "bg-white text-black hover:bg-white/80" : "bg-transparent border border-white/50 text-white hover:bg-white/10"}`}
+            >
+              {isWifiConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
+              <span className="hidden sm:inline">
+                {isWifiConnected ? "DISCONNECT WIFI" : "CONNECT WIFI"}
               </span>
             </button>
           )}
