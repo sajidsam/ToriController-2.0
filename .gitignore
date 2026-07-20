@@ -50,3 +50,15 @@ Thumbs.db
 # Debug / maps
 *.map
 ._*
+*.mp4
+*.mp4.part
+*.pt
+*.jpg
+*.png
+*.cjs
+*.js
+!src/utils/*.js
+!src/workers/*.js
+!electron/*.cjs
+!src/main.jsx
+!src/App.jsx
