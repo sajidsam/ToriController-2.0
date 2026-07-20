@@ -106,7 +106,7 @@ const SubmarineDashboard = () => {
 
   const startCalibration = () => {
     // Trigger ESP32 Hardware Calibration
-    sendCommand("ESP32", "CALIBRATE");
+    sendCommand("/calibrate", "CALIBRATE");
 
     setIsCalibratingVal(true);
     setIsCalibratedVal(false);
@@ -314,20 +314,21 @@ const SubmarineDashboard = () => {
       const hist = localStorage.getItem("ipHistory");
       return hist
         ? JSON.parse(hist)
-        : ["10.64.106.116", "192.168.4.1", "192.168.68.95", "192.168.0.141"];
-    } catch {
-      return ["10.64.106.116", "192.168.4.1", "192.168.68.95"];
+        : ["tori.local", "192.168.7.1", "10.64.106.116", "192.168.4.1", "192.168.68.95", "192.168.0.141"];
+    } catch (e) {
+      return ["tori.local", "192.168.7.1", "10.64.106.116", "192.168.4.1", "192.168.68.95"];
     }
   });
-  const [ipAddress, setIpAddress] = useState(ipHistory[0] || "192.168.4.1"); // ESP32's IP
+  const [ipAddress, setIpAddress] = useState(ipHistory[0] || "tori.local"); // ESP32's IP
   const [cameraHistory, setCameraHistory] = useState(() => {
     try {
       const hist = localStorage.getItem("cameraHistory");
       return hist
         ? JSON.parse(hist)
         : [
-            "http://10.64.106.116:81/stream",
-            "http://192.168.0.141:8080/video",
+            "http://192.168.7.1:81/stream",
+            "http://192.168.4.1:81/stream",
+            "http://192.168.68.95:81/stream",
             "/test_video.mp4",
             "http://192.168.4.1:81/stream",
           ];
@@ -343,9 +344,9 @@ const SubmarineDashboard = () => {
   const [showUsbPortSelector, setShowUsbPortSelector] = useState(false);
   const [pairedPorts, setPairedPorts] = useState([]);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
-  const [modalIp, setModalIp] = useState("192.168.4.1");
+  const [modalIp, setModalIp] = useState("192.168.7.1");
   const [modalCameraUrl, setModalCameraUrl] = useState(
-    "http://192.168.4.1:81/stream",
+    "http://192.168.7.1:81/stream",
   );
   const [modalGpsUrl, setModalGpsUrl] = useState(
     "http://192.168.68.56:8080/location",
@@ -627,28 +628,12 @@ const SubmarineDashboard = () => {
           });
       }
 
-      // 2. Ping and Temp every 2 seconds (20 ticks of 100ms)
+      // 2. Ping every 2 seconds (20 ticks of 100ms)
       if (tickCount % 20 === 0) {
         // Ping the main route to check signal
         fetch(`http://${ipAddress}/`, { mode: "no-cors" })
           .then(() => setSignalStrength(100))
           .catch(() => setSignalStrength(0));
-
-        // Fetch Real Temperature Data
-        fetch(`http://${ipAddress}/temp`, { signal: AbortSignal.timeout(1500) })
-          .then((res) => {
-            if (!res.ok) throw new Error("Network response was not ok");
-            return res.text();
-          })
-          .then((data) => {
-            const parsedTemp = parseFloat(data);
-            if (!isNaN(parsedTemp)) {
-              setTemp(parsedTemp);
-            }
-          })
-          .catch((err) =>
-            console.warn("Temp Fetch Error (WiFi):", err.message),
-          );
       }
     }, 100);
     return () => clearInterval(pingInterval);

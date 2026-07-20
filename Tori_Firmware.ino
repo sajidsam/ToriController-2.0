@@ -4,6 +4,7 @@
 #include <BasicLinearAlgebra.h>
 #include <DallasTemperature.h>
 #include <ESPAsyncWebServer.h>
+#include <ESPmDNS.h> // iPad এ সহজে tori.local দিয়ে এক্সেস করার জন্য
 #include <HTTPClient.h>
 #include <MPU9250.h>
 #include <OneWire.h>
@@ -20,6 +21,7 @@ using namespace BLA;
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 bool obstacleDetected = false;
 int currentObsDist = -1;
+
 // --- Hardware Pins ---
 const int dirPin1 = 12; // L298N IN1 (PWM Forward)
 const int dirPin2 = 13; // L298N IN2 (PWM Reverse)
@@ -49,7 +51,7 @@ TinyGPSPlus gps;
 MPU9250 mpu;
 
 // --- Global States & Thread Safety Flags ---
-void TaskCore0(void *pvParameters); // Forward declaration for FreeRTOS task
+void TaskCore0(void *pvParameters);
 TaskHandle_t TaskCore0Handle;
 int currentSpeed = 0;
 int targetLeftAngle = 97;
@@ -66,10 +68,6 @@ bool serverIsRunning = false;
 // 0 = Normal, 1 = Calibrating Accel/Gyro, 2 = Calibrating Mag
 int calibrationState = 0;
 
-// --- WiFi Default Credentials ---
-const char *defaultSSID = "IoT Lab";
-const char *defaultPass = "bubt1234";
-
 // --- Sensor Global Variables ---
 float currentTemp = 0.0;
 float currentLat = 0.0;
@@ -79,31 +77,22 @@ float mpuRoll = 0.0;
 float mpuYaw = 0.0;
 
 // --- ZUPT Extended Kalman Filter (EKF) State Matrices ---
-// X-Axis
-BLA::Matrix<2, 1> stateX = {0.0, 0.0}; // [posX, velX]^T
+BLA::Matrix<2, 1> stateX = {0.0, 0.0};
 BLA::Matrix<2, 2> PX = {1.0, 0.0, 0.0, 1.0};
-
-// Y-Axis
-BLA::Matrix<2, 1> stateY = {0.0, 0.0}; // [posY, velY]^T
+BLA::Matrix<2, 1> stateY = {0.0, 0.0};
 BLA::Matrix<2, 2> PY = {1.0, 0.0, 0.0, 1.0};
-
-// Z-Axis
-BLA::Matrix<2, 1> stateZ = {0.0, 0.0}; // [posZ, velZ]^T
+BLA::Matrix<2, 1> stateZ = {0.0, 0.0};
 BLA::Matrix<2, 2> PZ = {1.0, 0.0, 0.0, 1.0};
 
-// Covariance Constants
-BLA::Matrix<2, 2> Q = {0.001, 0.0, 0.0, 0.001}; // Process Noise
-BLA::Matrix<1, 1> R = {0.01};                   // Measurement Noise
-BLA::Matrix<1, 2> H = {0.0,
-                       1.0}; // Measurement Matrix (We measure Velocity = 0)
-BLA::Matrix<1, 1> Z_meas = {0.0}; // ZUPT Measurement (Velocity is zero)
+BLA::Matrix<2, 2> Q = {0.001, 0.0, 0.0, 0.001};
+BLA::Matrix<1, 1> R = {0.01};
+BLA::Matrix<1, 2> H = {0.0, 1.0};
+BLA::Matrix<1, 1> Z_meas = {0.0};
 
 // --- Navigation & Dead Reckoning Variables ---
 float velX = 0.0, velY = 0.0, velZ = 0.0;
 float posX = 0.0, posY = 0.0, posZ = 0.0;
 unsigned long lastIntegrationTime = 0;
-
-// --- Filter Settling / Warm-up Variable ---
 unsigned long systemStartTime = 0;
 
 unsigned long previousTempTime = 0;
@@ -132,9 +121,7 @@ void applyMotorLogic() {
 }
 
 void writeServo(int channel, int angle) {
-  // Map angle (0-180) to pulse width (500us to 2500us)
   int pulse = map(angle, 0, 180, 500, 2500);
-  // Calculate 14-bit duty cycle (max 16383) for 50Hz (20000us period)
   int duty = (pulse * 16383) / 20000;
   ledcWrite(channel, duty);
 }
@@ -146,7 +133,7 @@ void emergencyStop() {
   targetRightAngle = 97;
   targetSharkAngle = 90;
   isForward = true;
-  applyMotorLogic(); // Apply immediately
+  applyMotorLogic();
   leftServoUpdateRequired = true;
   rightServoUpdateRequired = true;
   sharkServoUpdateRequired = true;
@@ -157,7 +144,7 @@ void handleUltrasonic() {
   static unsigned long lastSonarTime = 0;
   if (millis() - lastSonarTime >= 200) {
     lastSonarTime = millis();
-    int distance = sonar.ping_median(5) / 58; // 58 for cm
+    int distance = sonar.ping_median(5) / 58;
     currentObsDist = distance;
 
     if (distance > 5 && distance < 100) {
@@ -196,12 +183,9 @@ void handleGPS() {
   }
 }
 
-// ==========================================
-// ADVANCED DEAD RECKONING (NHC & ZUPT)
-// ==========================================
 void handleMPU() {
   if (calibrationState != 0)
-    return; // Do not run IMU logic during calibration
+    return;
 
   if (millis() - previousMPUTime >= mpuInterval) {
     previousMPUTime = millis();
@@ -216,99 +200,71 @@ void handleMPU() {
       lastIntegrationTime = currentTime;
 
       if (millis() - systemStartTime < 3000) {
-        posX = 0;
-        posY = 0;
-        posZ = 0;
-        velX = 0;
-        velY = 0;
-        velZ = 0;
+        posX = posY = posZ = velX = velY = velZ = 0;
         return;
       }
       if (dt > 0.1)
         return;
 
-      // Get Raw Linear Acceleration
       float rawAccX = mpu.getLinearAccX();
       float rawAccY = mpu.getLinearAccY();
       float rawAccZ = mpu.getLinearAccZ();
 
       float yaw_rad = mpuYaw * M_PI / 180.0;
-
-      // Transform Body Acceleration to Earth Acceleration using Yaw
       float acc_earth_x = rawAccX * cos(yaw_rad) - rawAccY * sin(yaw_rad);
       float acc_earth_y = rawAccX * sin(yaw_rad) + rawAccY * cos(yaw_rad);
       float acc_earth_z = rawAccZ;
 
-      // State Transition Matrix (F) and Control Matrix (B)
       BLA::Matrix<2, 2> F = {1.0, (float)dt, 0.0, 1.0};
       BLA::Matrix<2, 1> B = {0.5f * (float)dt * (float)dt, (float)dt};
-
       float DEADBAND = 0.12;
-      BLA::Matrix<2, 2> I2 = {1.0, 0.0, 0.0, 1.0}; // 2x2 Identity Matrix
+      BLA::Matrix<2, 2> I2 = {1.0, 0.0, 0.0, 1.0};
 
-      // ----------------------------------------------------
-      // X-Axis EKF (Earth Frame)
-      // ----------------------------------------------------
+      // X-Axis
       BLA::Matrix<1, 1> uX = {acc_earth_x * 9.81f};
-      stateX = F * stateX + B * uX; // Prediction
+      stateX = F * stateX + B * uX;
       PX = F * PX * ~F + Q;
-
-      if (abs(rawAccX) < DEADBAND) { // ZUPT Update (Zero Velocity Update)
-        BLA::Matrix<1, 1> Y = Z_meas - H * stateX;  // Innovation
-        BLA::Matrix<1, 1> S = H * PX * ~H + R;      // Innovation Covariance
-        BLA::Matrix<2, 1> K = PX * ~H * Inverse(S); // Kalman Gain
-
-        stateX = stateX + K * Y; // State Update
-        PX = (I2 - K * H) * PX;  // Covariance Update
-
-        stateX(1, 0) *= 0.85; // Additional hydrodynamic friction
+      if (abs(rawAccX) < DEADBAND) {
+        BLA::Matrix<1, 1> Y = Z_meas - H * stateX;
+        BLA::Matrix<1, 1> S = H * PX * ~H + R;
+        BLA::Matrix<2, 1> K = PX * ~H * Inverse(S);
+        stateX = stateX + K * Y;
+        PX = (I2 - K * H) * PX;
+        stateX(1, 0) *= 0.85;
       } else {
-        stateX(1, 0) *= 0.98; // Continuous friction
+        stateX(1, 0) *= 0.98;
       }
 
-      // ----------------------------------------------------
-      // Y-Axis EKF (Earth Frame)
-      // ----------------------------------------------------
+      // Y-Axis
       BLA::Matrix<1, 1> uY = {acc_earth_y * 9.81f};
       stateY = F * stateY + B * uY;
       PY = F * PY * ~F + Q;
-
       if (abs(rawAccY) < DEADBAND) {
         BLA::Matrix<1, 1> Y = Z_meas - H * stateY;
         BLA::Matrix<1, 1> S = H * PY * ~H + R;
         BLA::Matrix<2, 1> K = PY * ~H * Inverse(S);
-
         stateY = stateY + K * Y;
         PY = (I2 - K * H) * PY;
-
         stateY(1, 0) *= 0.85;
       } else {
         stateY(1, 0) *= 0.98;
       }
 
-      // ----------------------------------------------------
-      // Z-Axis EKF
-      // ----------------------------------------------------
+      // Z-Axis
       BLA::Matrix<1, 1> uZ = {acc_earth_z * 9.81f};
       stateZ = F * stateZ + B * uZ;
       PZ = F * PZ * ~F + Q;
-
       if (abs(rawAccZ) < DEADBAND) {
         BLA::Matrix<1, 1> Y = Z_meas - H * stateZ;
         BLA::Matrix<1, 1> S = H * PZ * ~H + R;
         BLA::Matrix<2, 1> K = PZ * ~H * Inverse(S);
-
         stateZ = stateZ + K * Y;
         PZ = (I2 - K * H) * PZ;
-
         stateZ(1, 0) *= 0.85;
       } else {
         stateZ(1, 0) *= 0.98;
       }
 
-      // ----------------------------------------------------
-      // Update global vars for telemetry
-      // ----------------------------------------------------
       posX = stateX(0, 0);
       posY = stateY(0, 0);
       posZ = stateZ(0, 0);
@@ -319,35 +275,7 @@ void handleMPU() {
   }
 }
 
-void connectToWiFi(String reqSSID, String reqPass) {
-  if (WiFi.status() == WL_CONNECTED) {
-    WiFi.disconnect();
-    delay(500);
-  }
-  Serial.println("STATUS:Attempting to connect to " + reqSSID);
-
-  WiFi.begin(reqSSID.c_str(), reqPass.c_str());
-
-  int wifiWait = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiWait < 20) {
-    delay(500);
-    wifiWait++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("STATUS:Connected! IP: " + WiFi.localIP().toString());
-    if (!serverIsRunning) {
-      server.begin();
-      serverIsRunning = true;
-    }
-  } else {
-    Serial.println("STATUS:WiFi Failed!");
-    WiFi.disconnect();
-  }
-}
-
-// --- Helper to Send Telemetry immediately to App so Modal pops up ---
-void sendTelemetry() {
+String buildTelemetryJson() {
   String json = "{";
   json += "\"pitch\":" + String(mpuPitch, 2) + ",";
   json += "\"roll\":" + String(mpuRoll, 2) + ",";
@@ -363,110 +291,142 @@ void sendTelemetry() {
   json += "\"lng\":" + String(currentLng, 6) + ",";
   json += "\"temp\":" + String(currentTemp, 2) + ",";
   json += "\"obsDist\":" + String(currentObsDist) + ",";
-  json += "\"cal\":" + String(calibrationState); // Added Calibration State
+  json += "\"cal\":" + String(calibrationState);
   json += "}";
+  return json;
+}
 
-  Serial.println("DATA:" + json); // Send via USB immediately
+void sendTelemetry() {
+  String json = buildTelemetryJson();
+  Serial.println("DATA:" + json);
 }
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
-<head><title>Tori Web</title></head>
-<body><h1>Web Server Active</h1></body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tori Submarine</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; background: #0f172a; color: #f8fafc; }
+    .card { background: #111827; padding: 12px; border-radius: 10px; margin-bottom: 10px; }
+    button { padding: 10px 12px; margin: 4px; border: 0; border-radius: 8px; background: #2563eb; color: white; }
+    .small { font-size: 14px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <h2>Tori Submarine</h2>
+  <div class="card">
+    <button onclick="sendAction('forward')">Forward</button>
+    <button onclick="sendAction('reverse')">Reverse</button>
+    <button onclick="sendAction('stopped')">Stop</button>
+  </div>
+  <div class="card">
+    <label>Speed <input id="speed" type="range" min="0" max="255" value="0" onchange="sendSpeed(this.value)"></label>
+    <div id="speedValue" class="small">0</div>
+  </div>
+  <div class="card">
+    <div class="small">Pitch: <span id="pitch">--</span></div>
+    <div class="small">Roll: <span id="roll">--</span></div>
+    <div class="small">Yaw: <span id="yaw">--</span></div>
+    <div class="small">Temp: <span id="temp">--</span> °C</div>
+    <div class="small">Obstacle: <span id="obsDist">--</span> cm</div>
+    <div class="small">Lat/Lng: <span id="lat">--</span>, <span id="lng">--</span></div>
+    <div class="small">Left/Right/Shark: <span id="leftAngle">--</span> / <span id="rightAngle">--</span> / <span id="sharkAngle">--</span></div>
+  </div>
+  <script>
+    function update(data) {
+      document.getElementById('pitch').textContent = data.pitch ?? '--';
+      document.getElementById('roll').textContent = data.roll ?? '--';
+      document.getElementById('yaw').textContent = data.yaw ?? '--';
+      document.getElementById('temp').textContent = data.temp ?? '--';
+      document.getElementById('obsDist').textContent = data.obsDist ?? '--';
+      document.getElementById('lat').textContent = data.lat ?? '--';
+      document.getElementById('lng').textContent = data.lng ?? '--';
+      document.getElementById('leftAngle').textContent = data.leftAngle ?? '--';
+      document.getElementById('rightAngle').textContent = data.rightAngle ?? '--';
+      document.getElementById('sharkAngle').textContent = data.sharkAngle ?? '--';
+      document.getElementById('speedValue').textContent = document.getElementById('speed').value;
+    }
+    function refresh() {
+      fetch('/imu').then(r => r.json()).then(update).catch(() => {});
+    }
+    function sendAction(dir) {
+      fetch('/action?dir=' + dir);
+    }
+    function sendSpeed(val) {
+      fetch('/speed?val=' + val);
+    }
+    setInterval(refresh, 1000);
+    refresh();
+  </script>
+</body>
 </html>
 )rawliteral";
 
-void fetchIPLocation() {
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("STATUS: Fetching Location via IP API...");
-    HTTPClient http;
-    http.begin("http://ip-api.com/csv/?fields=lat,lon");
-    int httpCode = http.GET();
-    if (httpCode == 200) {
-      String payload = http.getString();
-      int commaIndex = payload.indexOf(',');
-      if (commaIndex != -1) {
-        currentLat = payload.substring(0, commaIndex).toFloat();
-        currentLng = payload.substring(commaIndex + 1).toFloat();
-        Serial.println(
-            "STATUS: IP Location Updated! Lat: " + String(currentLat, 6) +
-            " Lng: " + String(currentLng, 6));
-      }
-    } else {
-      Serial.println("ERROR: IP API Failed (Code: " + String(httpCode) + ")");
-    }
-    http.end();
-  }
-}
-
 void setup() {
+  // ১. Serial (Mac এর জন্য) ইনিশিয়ালাইজ করা
   Serial.begin(115200);
-  GPS_Serial.begin(9600, SERIAL_8N1, gpsRxPin, gpsTxPin);
 
+  // ২. Startup delay
+  delay(2000);
+  Serial.println("STATUS: System Booting.");
+
+  GPS_Serial.begin(9600, SERIAL_8N1, gpsRxPin, gpsTxPin);
   Wire.begin(sdaPin, sclPin);
   Wire.setClock(400000);
-  delay(2000);
 
   tempSensor.begin();
-  tempSensor.setWaitForConversion(false); // Make it non-blocking
+  tempSensor.setWaitForConversion(false);
 
   ledcSetup(pwmChannel1, pwmFreq, pwmResolution);
   ledcSetup(pwmChannel2, pwmFreq, pwmResolution);
   ledcAttachPin(dirPin1, pwmChannel1);
   ledcAttachPin(dirPin2, pwmChannel2);
 
-  // Remove ESP32Servo and use Native LEDC to avoid S3 Timer bugs
-  ledcSetup(2, 50, 14); // Channel 2, 50Hz, 14-bit
-  ledcSetup(3, 50, 14); // Channel 3, 50Hz, 14-bit
-  ledcSetup(4, 50, 14); // Channel 4, 50Hz, 14-bit
+  ledcSetup(2, 50, 14);
+  ledcSetup(3, 50, 14);
+  ledcSetup(4, 50, 14);
   ledcAttachPin(leftServoPin, 2);
   ledcAttachPin(rightServoPin, 3);
   ledcAttachPin(sharkServoPin, 4);
 
   emergencyStop();
 
-  // 1. CONNECT TO WIFI FIRST
-  WiFi.mode(WIFI_STA);
-  Serial.println("STATUS: Attempting to connect to default WiFi...");
-  WiFi.begin(defaultSSID, defaultPass);
+  // ৩. WiFi AP Mode চালু রাখা (যাতে নেটওয়ার্ক স্ট্যাক পুরোপুরি রেডি হয়)
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("Tori_Submarine", "12345678");
+  Serial.print("STATUS: Network Stack Ready. AP IP: ");
+  Serial.println(WiFi.softAPIP());
 
-  unsigned long startAttemptTime = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 5000) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println();
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("STATUS: WiFi Connected! IP: " + WiFi.localIP().toString());
-    server.begin();
-    serverIsRunning = true;
-    fetchIPLocation();
+  // ৪. mDNS চালু করা (যাতে iPad এ tori.local দিয়ে এক্সেস করা যায়)
+  if (!MDNS.begin("tori")) {
+    Serial.println("ERROR: Error setting up MDNS responder!");
   } else {
-    Serial.println("STATUS: WiFi Failed! Running in USB-only mode.");
+    Serial.println("STATUS: mDNS responder started. You can use "
+                   "http://tori.local in iPad App");
   }
+
+  // ৫. ওয়েব সার্ভার চালু করা (iPad / Browser এর জন্য CORS Header সহ)
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/html", index_html);
   });
 
+  // (আপনার আগের সবগুলো API Endpoints)
   server.on("/imu", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String json = "{";
-    json += "\"pitch\":" + String(mpuPitch, 2) + ",";
-    json += "\"roll\":" + String(mpuRoll, 2) + ",";
-    json += "\"yaw\":" + String(mpuYaw, 2) + ",";
-    json += "\"posX\":" + String(posX, 4) + ",";
-    json += "\"posY\":" + String(posY, 4) + ",";
-    json += "\"posZ\":" + String(posZ, 4) + ",";
-    json += "\"velX\":" + String(velX, 4) + ",";
-    json += "\"leftAngle\":" + String(targetLeftAngle) + ",";
-    json += "\"rightAngle\":" + String(targetRightAngle) + ",";
-    json += "\"sharkAngle\":" + String(targetSharkAngle) + ",";
-    json += "\"temp\":" + String(currentTemp, 2) + ",";
-    json += "\"obsDist\":" + String(currentObsDist) + ",";
-    json += "\"cal\":" + String(calibrationState); // Send Cal State via Web
-    json += "}";
-    request->send(200, "application/json", json);
+    request->send(200, "application/json", buildTelemetryJson());
+  });
+
+  server.on("/telemetry", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "application/json", buildTelemetryJson());
+  });
+
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "application/json", buildTelemetryJson());
   });
 
   server.on("/left_servo", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -536,52 +496,38 @@ void setup() {
     }
   });
 
-  Serial.println("Ready for commands.");
+  server.begin();
+  serverIsRunning = true;
+  Serial.println("STATUS: Web Server Started!");
 
-  // 2. NOW START CALIBRATION
+  // MPU Setup
   if (!mpu.setup(0x68)) {
     Serial.println("ERROR: MPU9250 connection failed! Check Wiring.");
   }
-
-  // Enable Madgwick Filter for better orientation stability
   mpu.selectFilter(QuatFilterSel::MADGWICK);
 
-  // Give app a moment to connect if it was waiting
-  delay(2000);
-
-  // Tell the App we are starting Accel/Gyro calibration (Keep Still)
   calibrationState = 1;
   sendTelemetry();
-
   Serial.println(
       "Calibrating MPU... Please keep the submarine completely STILL!");
   mpu.calibrateAccelGyro();
   Serial.println("Accel & Gyro Calibration complete!");
 
-  // Tell the App we are starting Magnetometer calibration (Figure-8)
   calibrationState = 2;
   sendTelemetry();
-
   Serial.println("Calibrating Magnetometer... PLEASE ROTATE THE SENSOR IN A "
-                 "FIGURE-8 MOTION IN THE AIR!");
+                 "FIGURE-8 MOTION!");
   mpu.calibrateMag();
   Serial.println("Magnetometer Calibration complete!");
 
-  // Tell the App calibration is done
   calibrationState = 0;
   sendTelemetry();
 
   systemStartTime = millis();
   lastIntegrationTime = micros();
 
-  // Create the FreeRTOS Task and pin it to Core 0
-  xTaskCreatePinnedToCore(TaskCore0,        // Function to implement the task
-                          "TaskCore0",      // Name of the task
-                          10000,            // Stack size in words
-                          NULL,             // Task input parameter
-                          1,                // Priority of the task
-                          &TaskCore0Handle, // Task handle
-                          0);               // Core where the task should run
+  xTaskCreatePinnedToCore(TaskCore0, "TaskCore0", 10000, NULL, 1,
+                          &TaskCore0Handle, 0);
 }
 
 void loop() {
@@ -602,30 +548,19 @@ void loop() {
     sharkServoUpdateRequired = false;
   }
 
-  // Only Fast, Non-Blocking, Real-Time tasks remain in Core 1 Loop
   handleUltrasonic();
   handleMPU();
 
-  // --- USB / Serial Telemetry Streaming ---
   if (millis() - previousSerialTime >= serialInterval) {
     previousSerialTime = millis();
     sendTelemetry();
   }
 
-  yield(); // Required to prevent watchdog reset
+  yield();
 }
 
 void processSerialCommand(String cmd) {
-  if (cmd.startsWith("WIFI:")) {
-    int firstColon = cmd.indexOf(':');
-    int secondColon = cmd.indexOf(':', firstColon + 1);
-
-    if (secondColon != -1) {
-      String reqSSID = cmd.substring(firstColon + 1, secondColon);
-      String reqPass = cmd.substring(secondColon + 1);
-      connectToWiFi(reqSSID, reqPass);
-    }
-  } else if (cmd == "DIR:FWD") {
+  if (cmd == "DIR:FWD") {
     isForward = true;
     isStopped = false;
     hardwareUpdateRequired = true;
@@ -635,8 +570,7 @@ void processSerialCommand(String cmd) {
     hardwareUpdateRequired = true;
   } else if (cmd.startsWith("SPD:")) {
     currentSpeed = cmd.substring(4).toInt();
-    hardwareUpdateRequired =
-        true; // Use flag to trigger applyMotorLogic safely on Core 1
+    hardwareUpdateRequired = true;
   } else if (cmd.startsWith("L_SRV:")) {
     targetLeftAngle = cmd.substring(6).toInt();
     leftServoUpdateRequired = true;
@@ -647,9 +581,6 @@ void processSerialCommand(String cmd) {
     targetSharkAngle = cmd.substring(6).toInt();
     sharkServoUpdateRequired = true;
   } else if (cmd == "STOP") {
-    // Cannot safely call emergencyStop() from Core 0 because it modifies
-    // servos/PWM directly. Instead set the target states and flags to let Core
-    // 1 handle it.
     isStopped = true;
     currentSpeed = 0;
     targetLeftAngle = 97;
@@ -661,52 +592,28 @@ void processSerialCommand(String cmd) {
     rightServoUpdateRequired = true;
     sharkServoUpdateRequired = true;
   } else if (cmd == "RESET_POS") {
-    posX = 0;
-    posY = 0;
-    posZ = 0;
-    velX = 0;
-    velY = 0;
-    velZ = 0;
+    posX = posY = posZ = velX = velY = velZ = 0;
     Serial.println("STATUS: Position Reset");
   } else if (cmd == "CALIBRATE") {
     Serial.println("STATUS: Starting Hardware Calibration...");
     calibrationState = 1;
     sendTelemetry();
     delay(100);
-    Serial.println(
-        "Calibrating MPU... Please keep the submarine completely STILL!");
     mpu.calibrateAccelGyro();
-    Serial.println("Accel & Gyro Calibration complete!");
     calibrationState = 2;
     sendTelemetry();
     delay(100);
-    Serial.println("Calibrating Magnetometer... PLEASE ROTATE THE SENSOR IN A "
-                   "FIGURE-8 MOTION IN THE AIR!");
     mpu.calibrateMag();
-    Serial.println("Magnetometer Calibration complete!");
     calibrationState = 0;
     sendTelemetry();
-  } else if (cmd == "IP") {
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("STATUS:IP:" + WiFi.localIP().toString());
-    } else {
-      Serial.println("STATUS:IP: not connected");
-    }
   }
 }
 
-// =========================================================================
-// CORE 0 TASK (Slow, Protocol, blocking, network and peripheral tasks)
-// =========================================================================
 void TaskCore0(void *pvParameters) {
   for (;;) {
-    // Read Temperature Sensor (Very Slow: Blocks for ~750ms!)
     handleTemperature();
-
-    // Read GPS Serial (Slow: 9600 baud processing)
     handleGPS();
 
-    // Read USB Commands - DRAIN THE BUFFER
     while (Serial.available() > 0) {
       String cmd = Serial.readStringUntil('\n');
       cmd.trim();
@@ -714,8 +621,6 @@ void TaskCore0(void *pvParameters) {
         processSerialCommand(cmd);
       }
     }
-
-    // Feed the watchdog timer to prevent crashes on Core 0
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
