@@ -205,3 +205,18 @@
 .grid-area-radar {
   display: none;
 }
+
+/* iOS touch improvements */
+body, html {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
