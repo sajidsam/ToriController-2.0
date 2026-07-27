@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-2019]
 
     steps:
       - name: Checkout code
@@ -28,13 +28,13 @@ jobs:
         run: npm ci
 
       - name: Setup MSVC (Windows only)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2019'
         uses: ilammy/msvc-dev-cmd@v1
-        
-      - name: Configure node-gyp for VS 2022 (Windows only)
-        if: matrix.os == 'windows-latest'
+
+      - name: Configure node-gyp for VS 2019 (Windows only)
+        if: matrix.os == 'windows-2019'
         run: |
-          npm config set msvs_version 2022
+          npm config set msvs_version 2019
           npm install -g node-gyp
 
       - name: Build and Package Electron App
@@ -44,7 +44,7 @@ jobs:
         env:
           # Disable automatic code signing search to build unsigned DMG/EXE successfully
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GYP_MSVS_VERSION: "2022"
+          GYP_MSVS_VERSION: "2019"
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
