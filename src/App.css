@@ -160,27 +160,27 @@
 @media (min-width: 640px) {
   .main-center-grid {
     gap: 1rem; /* gap-4 */
-    grid-template-columns: minmax(280px, 7fr) minmax(160px, 3fr) 320px;
+    grid-template-columns: minmax(280px, 7fr) minmax(160px, 3fr);
     grid-template-rows: 1fr 1fr;
     grid-template-areas:
-      "camera  camera  radar"
-      "pfd     dbl     radar";
+      "camera  camera"
+      "pfd     dbl";
   }
 }
 
 @media (min-width: 1024px) { /* lg breakpoint */
   .main-center-grid {
-    grid-template-columns: minmax(300px, 7fr) minmax(180px, 3fr) 320px;
+    grid-template-columns: minmax(300px, 7fr) minmax(180px, 3fr);
     grid-template-rows: 1fr 1fr;
     grid-template-areas:
-      "camera  camera  radar"
-      "pfd     dbl     radar";
+      "camera  camera"
+      "pfd     dbl";
   }
 }
 
 @media (min-width: 1280px) { /* xl breakpoint */
   .main-center-grid {
-    grid-template-columns: minmax(340px, 7fr) minmax(220px, 3fr) 340px;
+    grid-template-columns: minmax(340px, 7fr) minmax(220px, 3fr);
   }
 }
 
@@ -203,5 +203,20 @@
 }
 
 .grid-area-radar {
-  grid-area: radar;
+  display: none;
 }
+
+/* iOS touch improvements */
+body, html {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+

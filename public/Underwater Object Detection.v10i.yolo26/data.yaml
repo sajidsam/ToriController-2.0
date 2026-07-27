@@ -1,0 +1,13 @@
+train: /Volumes/Sifat_SSD/Development/Project/ToriController-2.0/public/Underwater Object Detection.v10i.yolo26/train/images
+val: /Volumes/Sifat_SSD/Development/Project/ToriController-2.0/public/Underwater Object Detection.v10i.yolo26/valid/images
+test: /Volumes/Sifat_SSD/Development/Project/ToriController-2.0/public/Underwater Object Detection.v10i.yolo26/test/images
+
+nc: 10
+names: ['Accessories', 'Cutlery', 'Glass', 'Litter', 'Metal', 'Natual-Debris', 'Plastic', 'Rope', 'Rubber', 'Wood']
+
+roboflow:
+  workspace: underwater-ztbtg
+  project: underwater-object-detection-5xmdy
+  version: 10
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/underwater-ztbtg/underwater-object-detection-5xmdy/dataset/10

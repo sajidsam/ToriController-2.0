@@ -3,8 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/src/assets/hero.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=1920, user-scalable=no" />
     <title>ToriController</title>
+    <script>
+      window.addEventListener('error', function(e) { 
+        console.error("CRITICAL_JS_ERROR: ", e.message, e.filename, e.lineno, e.colno, e.error); 
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) { 
+        console.error("CRITICAL_PROMISE_ERROR: ", e.reason); 
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

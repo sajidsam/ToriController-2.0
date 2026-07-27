@@ -136,7 +136,7 @@ function DblScreen({ depth = 0, speedKnots = 0, heading = 0, temp = 0 }) {
       {/* HEADER */}
       <div className="flex items-center justify-between border-b border-white/15 pb-2 mb-2">
         <span className="text-[10px] font-bold tracking-widest text-white flex items-center gap-1">
-          <Radio size={12} className="animate-pulse" /> DBL PILOT SCREEN
+          <Radio size={12} className="animate-pulse" /> DVL PILOT SCREEN
         </span>
         <span className="text-[8px] bg-white/20 text-white border border-white/40 px-1.5 py-0.5 rounded font-mono uppercase tracking-wider">
           Link: Active

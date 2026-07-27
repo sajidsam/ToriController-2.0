@@ -13,9 +13,9 @@ const RadarControls = ({
   const rangePresets = [2, 4, 6, 10, 20, 50];
 
   return (
-    <div className="flex flex-col gap-3 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg p-3 text-xs">
+    <div className="flex flex-col gap-1.5 bg-black/60 backdrop-blur-md border border-white/20 rounded-lg p-2 text-xs">
       {/* Mode Selection */}
-      <div className="flex flex-col gap-2 border-b border-white/10 pb-2">
+      <div className="flex flex-col gap-1 border-b border-white/10 pb-1.5">
         <label className="text-white font-bold uppercase tracking-widest text-[10px]">
           <Radio size={12} className="inline mr-1" /> Operating Mode
         </label>
@@ -37,7 +37,7 @@ const RadarControls = ({
       </div>
 
       {/* Range Control */}
-      <div className="flex flex-col gap-2 border-b border-white/10 pb-2">
+      <div className="flex flex-col gap-1 border-b border-white/10 pb-1.5">
         <div className="flex justify-between items-center">
           <label className="text-white font-bold uppercase tracking-widest text-[10px]">
             <Volume2 size={12} className="inline mr-1" /> Range
@@ -58,25 +58,10 @@ const RadarControls = ({
             background: `linear-gradient(to right, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.4) ${((range-2)/(50-2))*100}%, rgba(255,255,255,0.1) ${((range-2)/(50-2))*100}%, rgba(255,255,255,0.1) 100%)`
           }}
         />
-        <div className="grid grid-cols-6 gap-1">
-          {rangePresets.map(r => (
-            <button
-              key={r}
-              onClick={() => onRangeChange(r)}
-              className={`py-1 px-1 rounded border text-[8px] font-mono font-bold transition-all ${
-                Math.abs(range - r) < 0.5
-                  ? 'bg-white/30 border-white/60 text-white'
-                  : 'bg-black/40 border-white/10 text-white/80 hover:border-white/30'
-              }`}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Gain Control */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 pb-1">
         <div className="flex justify-between items-center">
           <label className="text-white font-bold uppercase tracking-widest text-[10px]">
             <Zap size={12} className="inline mr-1" /> Gain
@@ -100,7 +85,7 @@ const RadarControls = ({
       </div>
 
       {/* Status Indicators */}
-      <div className="flex gap-2 bg-black/40 p-2 rounded border border-white/10">
+      <div className="flex gap-2 bg-black/40 p-1.5 rounded border border-white/10">
         <div className="flex-1">
           <div className="text-[8px] text-white/85 uppercase tracking-widest font-bold">Sonar</div>
           <div className={`text-[10px] font-mono font-bold ${amps > 15 ? 'text-white' : 'text-white/80'}`}>
