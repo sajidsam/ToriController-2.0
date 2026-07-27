@@ -55,7 +55,7 @@
         "appId": "com.toricontroller.app",
         "productName": "ToriController",
         "directories": {
-            "output": "/tmp/ToriBuildOutput"
+            "output": "dist-electron"
         },
         "files": [
             "dist/**/*",
