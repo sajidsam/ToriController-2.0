@@ -147,7 +147,7 @@ const Joystick = ({ x, y, onChange }) => {
 
             {/* Knob */}
             <div
-                className="absolute rounded-full bg-gradient-to-br from-purple-500 to-purple-800 shadow-lg border border-purple-400 cursor-grab transform transition-transform duration-75 active:cursor-grabbing hover:scale-105"
+                className="absolute rounded-full bg-gradient-to-br from-gray-300 to-gray-500 shadow-lg border border-white/50 cursor-grab transform transition-transform duration-75 active:cursor-grabbing hover:scale-105"
                 style={{
                 width: knobSize,
                 height: knobSize,

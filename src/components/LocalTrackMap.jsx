@@ -114,7 +114,7 @@ const LocalTrackMap = ({
 
   return (
     <div
-      className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors bg-white/5 border-white/10 text-white relative w-full h-full min-h-[300px] ${!isPhoneConnected && referenceGps ? "border-red-500/50 bg-red-500/5" : ""}`}
+      className={`p-3 rounded-lg border flex flex-col gap-1 transition-colors bg-white/5 border-white/10 text-white relative w-full h-full min-h-[300px] ${!isPhoneConnected && referenceGps ? "border-white/30 bg-white/10" : ""}`}
     >
       <div className="flex items-center justify-between text-sm font-semibold mb-2 opacity-100 z-50">
         <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ const LocalTrackMap = ({
           LOCAL TRACK
           <button
             onClick={onResetTrack}
-            className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded border border-red-500/50 hover:bg-red-500/40 cursor-pointer ml-2 z-50"
+            className="text-[9px] bg-white/10 text-white/80 px-1.5 py-0.5 rounded border border-white/30 hover:bg-white/20 cursor-pointer ml-2 z-50 transition-colors"
           >
             RESET
           </button>
@@ -142,9 +142,9 @@ const LocalTrackMap = ({
       </div>
 
       <div className="absolute top-10 left-4 z-50 flex flex-col gap-0.5 pointer-events-none">
-        {!isPhoneConnected && referenceGps && (
-          <span className="text-[9px] font-mono text-red-500 font-bold bg-black/60 px-1 rounded mt-1">
-            PHONE GPS LOST
+        {!isPhoneConnected && (
+          <span className="text-[9px] font-mono text-white/70 font-bold bg-black/60 px-1 rounded mt-1">
+            (DR ONLY)
           </span>
         )}
       </div>

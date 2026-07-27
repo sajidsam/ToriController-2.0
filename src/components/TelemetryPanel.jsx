@@ -40,6 +40,7 @@ const TelemetryPanel = ({
   computedVelocity = 0,
   totalDistance = 0,
   isPhoneConnected = false,
+  waypoints = [],
   onResetGps = () => {},
   onResetTrack = () => {},
 }) => {
@@ -68,8 +69,6 @@ const TelemetryPanel = ({
       return `${x},${y}`;
     })
     .join(" ");
-
-
 
   return (
     <div className="flex flex-col lg:w-[340px] w-full bg-black p-2 sm:p-3 lg:border-r lg:border-b-0 border-b border-white/20 text-white shrink-0 lg:h-full lg:overflow-y-auto">
@@ -107,7 +106,7 @@ const TelemetryPanel = ({
         </div>
 
         {/* Obstacle Distance */}
-        <div
+        {/* <div
           className={`p-2 rounded-lg border flex flex-col gap-0.5 transition-colors ${obsDist > 0 && obsDist < 100 ? "bg-red-500/20 text-red-400 border-red-500/50 animate-pulse" : "bg-white/5 border-white/10 text-white"}`}
         >
           <div className="flex items-center gap-2 text-sm font-semibold mb-1 opacity-100">
@@ -119,9 +118,11 @@ const TelemetryPanel = ({
             <span className="text-lg opacity-85 ml-1">cm</span>
           </div>
           {obsDist > 0 && obsDist < 100 && (
-            <div className="text-xs font-bold uppercase mt-1">OBSTACLE DETECTED</div>
+            <div className="text-xs font-bold uppercase mt-1">
+              OBSTACLE DETECTED
+            </div>
           )}
-        </div>
+        </div> */}
 
         {/* GPS Location */}
         <div
@@ -132,7 +133,7 @@ const TelemetryPanel = ({
             {referenceGps && (
               <button
                 onClick={onResetGps}
-                className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/50 hover:bg-red-500/40 cursor-pointer"
+                className="text-[10px] bg-white/10 text-white/80 px-2 py-0.5 rounded border border-white/30 hover:bg-white/20 cursor-pointer transition-colors"
               >
                 RESET DR
               </button>
@@ -146,65 +147,42 @@ const TelemetryPanel = ({
             </div>
           ) : (
             <>
-              {referenceGps ? (
+              <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase mt-1">
+                Starting Point
+              </div>
+              <div className="text-sm font-mono font-bold tracking-tighter text-white/80 mb-2">
+                {waypoints && waypoints.length > 0
+                  ? `${Number(waypoints[0][0]).toFixed(6)}, ${Number(waypoints[0][1]).toFixed(6)}`
+                  : "NOT SET"}
+              </div>
+
+              <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase">
+                Current Location
+              </div>
+              <div className="text-sm font-mono font-bold tracking-tighter text-white">
+                LAT: {lat === 0 ? "Wait..." : Number(lat || 0).toFixed(6)}
+              </div>
+              <div className="text-sm font-mono font-bold tracking-tighter text-white">
+                LNG: {lng === 0 ? "Wait..." : Number(lng || 0).toFixed(6)}
+              </div>
+
+              {referenceGps && (
                 <>
-                  <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase">
-                    Starting Location
+                  <div className="text-[9px] font-mono opacity-50 mt-2 text-white">
+                    DR LAT: {Number(drLat || 0).toFixed(6)}
                   </div>
-                  <div className="text-xs font-mono text-white/80 mb-2">
-                    {Number(referenceGps.lat).toFixed(6)},{" "}
-                    {Number(referenceGps.lng).toFixed(6)}
-                  </div>
-
-                  <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase">
-                    Current (End) Location
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-blue-400">
-                    LAT: {Number(drLat || 0).toFixed(6)}
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-blue-400">
-                    LNG: {Number(drLng || 0).toFixed(6)}
-                  </div>
-
-                  <div className="text-[9px] font-mono opacity-60 mt-2">
-                    PHONE GPS: {Number(lat || 0).toFixed(6)},{" "}
-                    {Number(lng || 0).toFixed(6)}
-                  </div>
-                  <div className="text-[9px] font-mono opacity-60 mt-1 text-green-400">
-                    IMU GPS: {Number(imuLat || 0).toFixed(6)},{" "}
-                    {Number(imuLng || 0).toFixed(6)}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase mt-1">
-                    Phone GPS
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-white">
-                    LAT: {lat === 0 ? "Wait..." : Number(lat || 0).toFixed(6)}
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-white">
-                    LNG: {lng === 0 ? "Wait..." : Number(lng || 0).toFixed(6)}
-                  </div>
-
-                  <div className="text-[9px] text-white/50 mb-0.5 font-bold tracking-widest uppercase mt-2">
-                    IMU GPS
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-green-400">
-                    LAT: {imuLat === 0 ? "Wait..." : Number(imuLat || 0).toFixed(6)}
-                  </div>
-                  <div className="text-sm font-mono font-bold tracking-tighter text-green-400">
-                    LNG: {imuLng === 0 ? "Wait..." : Number(imuLng || 0).toFixed(6)}
+                  <div className="text-[9px] font-mono opacity-50 text-white">
+                    DR LNG: {Number(drLng || 0).toFixed(6)}
                   </div>
                 </>
               )}
 
-              <div className="text-xs font-bold mt-1 opacity-85 text-white flex items-center justify-between">
+              <div className="text-xs font-bold mt-2 opacity-85 text-white flex items-center justify-between">
                 <span>
                   {sats > 0 ? "SAT FIX" : sats === -1 ? "NO FIX" : "ERROR"}
                 </span>
                 {referenceGps && (
-                  <span className="bg-blue-500 text-white px-1.5 py-0.5 rounded text-[8px] tracking-widest">
+                  <span className="bg-white/20 text-white px-1.5 py-0.5 rounded text-[8px] tracking-widest">
                     DR ACTIVE
                   </span>
                 )}
@@ -234,7 +212,7 @@ const TelemetryPanel = ({
               <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">
                 Velocity
               </span>
-              <div className="text-xl font-mono font-bold tracking-tighter text-green-400">
+              <div className="text-xl font-mono font-bold tracking-tighter text-white">
                 {Number(computedVelocity || 0).toFixed(2)}
                 <span className="text-sm opacity-85 ml-1">m/s</span>
               </div>
@@ -253,7 +231,7 @@ const TelemetryPanel = ({
               <polyline
                 points={sparklinePoints}
                 fill="none"
-                stroke="#4ade80"
+                stroke="#ffffffff"
                 strokeWidth="1.5"
                 vectorEffect="non-scaling-stroke"
                 strokeLinejoin="round"
@@ -261,7 +239,6 @@ const TelemetryPanel = ({
             </svg>
           </div>
         </div>
-
 
         {/* 3D Displacement / Position */}
         <div
@@ -297,71 +274,41 @@ const TelemetryPanel = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-green-400">
+              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-white">
                 Vel X
               </span>
-              <span className="text-sm font-mono font-bold text-green-400">
+              <span className="text-sm font-mono font-bold text-white">
                 {velX.toFixed(2)} m/s
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-green-400">
+              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-white">
                 Vel Y
               </span>
-              <span className="text-sm font-mono font-bold text-green-400">
+              <span className="text-sm font-mono font-bold text-white">
                 {velY.toFixed(2)} m/s
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-green-400">
+              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-white">
                 Vel Z
               </span>
-              <span className="text-sm font-mono font-bold text-green-400">
+              <span className="text-sm font-mono font-bold text-white">
                 {velZ.toFixed(2)} m/s
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-blue-400">
+              <span className="text-[10px] text-white/70 font-bold uppercase flex items-center gap-1 text-white">
                 Cal State
               </span>
-              <span className="text-sm font-mono font-bold text-blue-400">
-                {calState === 0 ? "Normal" : calState === 1 ? "Acc/Gyro" : calState === 2 ? "Mag" : "Zeroing"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Raw IMU Data */}
-        <div
-          className={`p-2 rounded-lg border flex flex-col gap-0.5 transition-colors bg-white/5 border-white/10 text-white`}
-        >
-          <div className="flex items-center gap-2 text-sm font-semibold mb-0.5 opacity-100">
-            <Activity size={16} />
-            RAW IMU SENSORS
-          </div>
-          <div className="flex flex-col gap-0.5 mt-0.5">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-white/70 font-bold uppercase">Acc (X,Y,Z)</span>
-              <span className="text-[10px] font-mono">
-                {typeof accel?.x === 'number' ? accel.x.toFixed(2) : '0.00'}, 
-                {typeof accel?.y === 'number' ? accel.y.toFixed(2) : '0.00'}, 
-                {typeof accel?.z === 'number' ? accel.z.toFixed(2) : '0.00'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-white/70 font-bold uppercase">Gyro (X,Y,Z)</span>
-              <span className="text-[10px] font-mono">
-                {typeof gyro?.x === 'number' ? gyro.x.toFixed(2) : '0.00'}, 
-                {typeof gyro?.y === 'number' ? gyro.y.toFixed(2) : '0.00'}, 
-                {typeof gyro?.z === 'number' ? gyro.z.toFixed(2) : '0.00'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] text-white/70 font-bold uppercase">Mag (X,Y,Z)</span>
-              <span className="text-[10px] font-mono">
-                {typeof mag?.x === 'number' ? mag.x.toFixed(2) : '0.00'}, 
-                {typeof mag?.y === 'number' ? mag.y.toFixed(2) : '0.00'}, 
-                {typeof mag?.z === 'number' ? mag.z.toFixed(2) : '0.00'}
+              <span className="text-sm font-mono font-bold text-white">
+                {calState === 0
+                  ? "Normal"
+                  : calState === 1
+                    ? "Acc/Gyro"
+                    : calState === 2
+                      ? "Mag"
+                      : "Zeroing"}
               </span>
             </div>
           </div>

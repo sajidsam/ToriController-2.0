@@ -202,22 +202,22 @@ const MainCenterView = ({
           {/* LEFT HALF: IP CAM */}
           <div className="relative w-1/2 h-full border-r border-white/10">
             <div className="absolute top-4 left-4 flex gap-2 z-40">
-              <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">
+              <span className="bg-white/20 text-white border border-white/50 text-[10px] font-bold px-2 py-1 rounded animate-pulse">
                 LIVE
               </span>
-              <span className="bg-black/50 text-white text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-amber-900/50 text-amber-500 hidden sm:inline">
+              <span className="bg-black/50 text-white/80 text-[10px] font-mono px-2 py-1 rounded backdrop-blur border border-white/30 hidden sm:inline">
                 LIVE: 3D SIMULATION
               </span>
               <button
                 onClick={() => setIsAiEnabled((prev) => !prev)}
                 className={`text-[10px] font-mono px-2 py-1 rounded backdrop-blur border cursor-pointer hover:opacity-80 transition-opacity ${
                   !isAiEnabled
-                    ? "bg-gray-500/20 text-gray-400 border-gray-500/50"
+                    ? "bg-white/5 text-white/50 border-white/20"
                     : aiStatus === "TRACKING"
-                      ? "bg-green-500/20 text-green-400 border-green-500/50"
+                      ? "bg-white/20 text-white border-white/60 shadow-[0_0_8px_#ffffff]"
                       : aiStatus === "SEARCHING"
-                        ? "bg-white/15 text-white/80 border-white/30"
-                        : "bg-red-500/20 text-red-400 border-red-500/50 animate-pulse"
+                        ? "bg-white/10 text-white/80 border-white/40"
+                        : "bg-white/10 text-white/60 border-white/30 animate-pulse"
                 }`}
               >
                 AI: {!isAiEnabled ? "OFF (CLICK TO ENABLE)" : aiStatus}
@@ -281,8 +281,8 @@ const MainCenterView = ({
                       key={i}
                       className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider backdrop-blur-sm ${
                         isHigh
-                          ? "bg-red-500/20 text-red-400 border border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                          : "bg-green-500/20 text-green-400 border border-green-500/50 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+                          ? "bg-white/20 text-white border border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.4)]"
+                          : "bg-white/10 text-white/70 border border-white/30 shadow-[0_0_10px_rgba(255,255,255,0.1)]"
                       }`}
                     >
                       TARGET: {obj.class}

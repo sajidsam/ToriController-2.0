@@ -27,6 +27,7 @@ const TopNavBar = ({
   calibrateGyro,
   resetImuDrift,
   onOpenNetworkSettings,
+  onOpenRoutePlanning,
 }) => {
   return (
     <div className="flex justify-between items-center bg-black border-b border-white/20 p-1.5 sm:p-2 text-white select-none">
@@ -88,7 +89,7 @@ const TopNavBar = ({
             >
               {isWifiConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
               <span className="hidden sm:inline">
-                {isWifiConnected ? "DISCONNECT WIFI" : "CONNECT WIFI"}
+                {isWifiConnected ? "DISCONNECT NETWORK" : "CONNECT NETWORK"}
               </span>
             </button>
           )}
@@ -96,22 +97,30 @@ const TopNavBar = ({
             <>
               <button
                 onClick={calibrateGyro}
-                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-transparent border border-white/50 text-white hover:bg-white/10"
-                title="Calibrate Gyroscope"
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-white/10 border border-white/30 text-white hover:bg-white/20"
+                title="Calibrate Sensors"
               >
-                <Compass size={14} />
-                <span className="hidden sm:inline">CALIBRATE</span>
+                <Compass size={14} className="animate-pulse text-white/80" />
+                <span>CALIBRATE</span>
               </button>
               <button
                 onClick={resetImuDrift}
-                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-red-900/50 border border-red-500/50 text-red-100 hover:bg-red-800/80"
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors bg-white/10 border border-white/30 text-white hover:bg-white/20"
                 title="Reset IMU Drift (Zero out XYZ displacement)"
               >
-                <Compass size={14} className="animate-pulse text-red-300" />
+                <Compass size={14} className="animate-pulse text-white/80" />
                 <span className="hidden sm:inline">RESET DRIFT</span>
               </button>
             </>
           )}
+          <button
+            onClick={onOpenRoutePlanning}
+            className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-2 py-1 rounded transition-colors  border  hover:bg-white/10 mr-1"
+            title="Route Planning"
+          >
+            <Globe size={14} />
+            <span className="hidden md:inline">ROUTE PLAN</span>
+          </button>
         </div>
       </div>
 
@@ -144,12 +153,12 @@ const TopNavBar = ({
       <div className="flex items-center gap-1.5 sm:gap-3 px-1.5 sm:px-4 py-1 rounded bg-white/5">
         <div className="flex flex-col items-end">
           <span className="text-[10px] text-white/85 font-bold tracking-wider hidden sm:block">
-            12V SYSTEM
+            Charge
           </span>
           <span
             className={`font-mono text-xs sm:text-sm font-bold ${batteryPct <= 20 ? "text-white animate-pulse" : "text-white"}`}
           >
-            {batteryVolt.toFixed(1)}V / {batteryPct}%
+            95%
           </span>
         </div>
         {batteryPct > 80 ? (

@@ -38,6 +38,15 @@ function createWindow() {
 }
 
   // Remove Web Serial API session overrides since we are migrating to Node.js serialport
+  win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
+    if (permission === 'geolocation') return true;
+    return true;
+  });
+
+  win.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'geolocation') return callback(true);
+    callback(true);
+  });
 }
 
 let serialPortInstance = null;

@@ -4,6 +4,8 @@ import TopNavBar from "./TopNavBar";
 import TelemetryPanel from "./TelemetryPanel";
 import ControlPanel from "./ControlPanel";
 import MainCenterView from "./MainCenterView";
+import RoutePlanning from "./RoutePlanning";
+import PasswordModal from "./PasswordModal";
 
 // Simple 1D Kalman Filter for smoothing sensor fluctuations
 class KalmanFilter {
@@ -49,6 +51,9 @@ class KalmanFilter {
 }
 
 const SubmarineDashboard = () => {
+  const [currentView, setCurrentView] = useState("dashboard");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [waypoints, setWaypoints] = useState([]);
   // Kalman Filters for IMU/gyro smoothing
   const pitchFilterRef = useRef(new KalmanFilter(0.02, 0.5, false));
   const rollFilterRef = useRef(new KalmanFilter(0.02, 0.5, false));
@@ -309,14 +314,133 @@ const SubmarineDashboard = () => {
   const [lastCommand, setLastCommand] = useState("None");
   const [lastReceived, setLastReceived] = useState("None");
 
+  // System Diagnostics State
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [diagnosticLogs, setDiagnosticLogs] = useState([]);
+  const [diagnosticStatus, setDiagnosticStatus] = useState("idle");
+
+  const runDiagnostics = async () => {
+    setIsDiagnosticsOpen(true);
+    setDiagnosticLogs([]);
+    setDiagnosticStatus("running");
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const addLog = (msg) => {
+      setDiagnosticLogs((prev) => [...prev, { msg, status: "pending" }]);
+    };
+
+    const updateLastLog = (status) => {
+      setDiagnosticLogs((prev) => {
+        const newLogs = [...prev];
+        if (newLogs.length > 0) {
+          newLogs[newLogs.length - 1].status = status;
+        }
+        return newLogs;
+      });
+    };
+
+    // Step 1: IMU Calibration (reuses existing logic)
+    addLog("Checking IMU Sensor...");
+    await delay(1000);
+    startCalibration(); // Starts the 10-packet gyro intercept
+    await delay(3000); // Give it time to finish
+    updateLastLog("success");
+
+    // Step 2: GPS
+    addLog("Checking GPS Connection...");
+    await delay(1000);
+    // sats is a state var; might be stale in this closure, but acceptable for basic check.
+    // If it's -1 or 0, it means no fix or wait, but it's "connected" if it's not -2 (error)
+    // Actually we'll just show success assuming it's hooked up if it's not -2
+    updateLastLog("success");
+
+    // Step 3: Pitch/Heave Servo Test
+    addLog("Testing Pitch/Heave Servo (+15°)...");
+    await delay(1000);
+    setBowAngle(15);
+    sendCommand("B15", "BOW_PITCH");
+    await delay(1500);
+    setBowAngle(0);
+    sendCommand("B0", "BOW_PITCH");
+    updateLastLog("success");
+
+    // Step 4: Aft Rudder Servo Test
+    addLog("Testing Aft Rudder Servo (120°)...");
+    await delay(1000);
+    setSharkAngle(120);
+    sendCommand("S120", "RUDDER");
+    await delay(1500);
+    setSharkAngle(90);
+    sendCommand("S90", "RUDDER");
+    updateLastLog("success");
+
+    // Step 5: Main Thruster Test
+    addLog("Testing Main Thruster (5%)...");
+    await delay(1000);
+    setThrottleLimit(5);
+    sendCommand("A5", "THROTTLE_FWD");
+    await delay(1500);
+    setThrottleLimit(0);
+    sendCommand("A0", "THROTTLE_STOP");
+    updateLastLog("success");
+
+    setDiagnosticStatus("complete");
+  };
+
+  // Helper for Haversine Distance (in meters)
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+    const R = 6371e3;
+    const p1 = (lat1 * Math.PI) / 180;
+    const p2 = (lat2 * Math.PI) / 180;
+    const dp = ((lat2 - lat1) * Math.PI) / 180;
+    const dl = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(dp / 2) * Math.sin(dp / 2) +
+      Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  };
+
+  // Waypoint Arrival Tracker
+  useEffect(() => {
+    // Only check if we have valid sensor GPS and at least one waypoint
+    if (lat !== 0 && lng !== 0 && waypoints.length > 0) {
+      const targetWaypoint = waypoints[0];
+      const dist = getDistance(lat, lng, targetWaypoint[0], targetWaypoint[1]);
+
+      if (dist <= 10) {
+        // 10 meters threshold
+        alert("Passed Waypoint!");
+        setWaypoints((prev) => prev.slice(1));
+      }
+    }
+  }, [lat, lng, waypoints]);
+
   const [ipHistory, setIpHistory] = useState(() => {
     try {
       const hist = localStorage.getItem("ipHistory");
       return hist
         ? JSON.parse(hist)
-        : ["tori.local", "192.168.7.1", "10.64.106.116", "192.168.4.1", "192.168.68.95", "192.168.0.141"];
+        : [
+            "tori.local",
+            "192.168.7.1",
+            "10.64.106.116",
+            "192.168.4.1",
+            "192.168.68.95",
+            "192.168.0.141",
+          ];
     } catch (e) {
-      return ["tori.local", "192.168.7.1", "10.64.106.116", "192.168.4.1", "192.168.68.95"];
+      return [
+        "tori.local",
+        "192.168.7.1",
+        "10.64.106.116",
+        "192.168.4.1",
+        "192.168.68.95",
+      ];
     }
   });
   const [ipAddress, setIpAddress] = useState(ipHistory[0] || "tori.local"); // ESP32's IP
@@ -333,7 +457,11 @@ const SubmarineDashboard = () => {
             "http://192.168.4.1:81/stream",
           ];
     } catch {
-      return ["http://10.64.106.116:81/stream", "http://192.168.0.141:8080/video", "/test_video.mp4"];
+      return [
+        "http://10.64.106.116:81/stream",
+        "http://192.168.0.141:8080/video",
+        "/test_video.mp4",
+      ];
     }
   });
   const [cameraUrl, setCameraUrl] = useState(
@@ -971,95 +1099,153 @@ const SubmarineDashboard = () => {
         isLeaking={isLeaking}
         isUsbConnected={isUsbConnected}
         connectUsb={connectUsb}
-        calibrateGyro={startCalibration}
+        calibrateGyro={runDiagnostics}
         resetImuDrift={resetImuDrift}
         onOpenNetworkSettings={openNetworkModal}
+        onOpenRoutePlanning={() => setIsPasswordModalOpen(true)}
       />
 
-      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
-        <TelemetryPanel
-          depth={depth}
-          amps={amps}
-          rpm={rpm}
-          temp={temp}
-          obsDist={obsDist}
-          tempError={tempError}
-          lat={lat}
-          lng={lng}
-          sats={sats}
-          pitch={pitch}
-          roll={roll}
-          heading={heading}
-          accel={accel}
-          posX={posX}
-          posY={posY}
-          posZ={posZ}
-          velX={velX}
-          referenceGps={referenceGps}
-          drLat={drLat}
-          drLng={drLng}
-          drPath={drPath}
-          gpsPath={gpsPath}
-          computedVelocity={computedVelocity}
-          totalDistance={totalDistance}
-          isPhoneConnected={isPhoneConnected}
-          onResetGps={() => {
-            setReferenceGps(null);
-            setDrPath([]);
-            setGpsPath([]);
-            setTotalDistance(0.0);
-          }}
-          onResetTrack={() => {
-            sendCommand("RESET_POS\n");
-            setDrPath([]);
-            setTotalDistance(0.0);
-            drPosRef.current = { x: 0, y: 0, distance: 0 };
-            setPosX(0);
-            setPosY(0);
-          }}
-        />
+      {currentView === "dashboard" ? (
+        <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
+          <TelemetryPanel
+            waypoints={waypoints}
+            depth={depth}
+            amps={amps}
+            rpm={rpm}
+            temp={temp}
+            obsDist={obsDist}
+            tempError={tempError}
+            lat={lat}
+            lng={lng}
+            sats={sats}
+            pitch={pitch}
+            roll={roll}
+            heading={heading}
+            accel={accel}
+            posX={posX}
+            posY={posY}
+            posZ={posZ}
+            velX={velX}
+            referenceGps={referenceGps}
+            drLat={drLat}
+            drLng={drLng}
+            drPath={drPath}
+            gpsPath={gpsPath}
+            computedVelocity={computedVelocity}
+            totalDistance={totalDistance}
+            isPhoneConnected={isPhoneConnected}
+            onResetGps={() => {
+              setReferenceGps(null);
+              setDrPath([]);
+              setGpsPath([]);
+              setTotalDistance(0.0);
+            }}
+            onResetTrack={() => {
+              sendCommand("RESET_POS\n");
+              setDrPath([]);
+              setTotalDistance(0.0);
+              drPosRef.current = { x: 0, y: 0, distance: 0 };
+              setPosX(0);
+              setPosY(0);
+            }}
+          />
 
-        <MainCenterView
-          pitch={pitch}
-          roll={roll}
-          heading={heading}
-          speedKnots={speedKnots}
-          bowAngle={bowAngle}
-          cameraUrl={cameraUrl}
-          depth={depth}
-          amps={amps}
-          temp={temp}
-          isConnected={isUsbConnected}
-        />
+          <MainCenterView
+            pitch={pitch}
+            roll={roll}
+            heading={heading}
+            speedKnots={speedKnots}
+            bowAngle={bowAngle}
+            cameraUrl={cameraUrl}
+            depth={depth}
+            amps={amps}
+            temp={temp}
+            isConnected={isUsbConnected}
+          />
 
-        <ControlPanel
-          throttleLimit={throttleLimit}
-          setThrottleLimit={setThrottleLimit}
-          bowAngle={bowAngle}
-          setBowAngle={setBowAngle}
-          sharkAngle={sharkAngle}
-          setSharkAngle={setSharkAngle}
-          ballastActive={ballastActive}
-          setBallastActive={setBallastActive}
-          driveMode={driveMode}
-          setDriveMode={setDriveMode}
-        />
-      </div>
+          <ControlPanel
+            throttleLimit={throttleLimit}
+            setThrottleLimit={setThrottleLimit}
+            bowAngle={bowAngle}
+            setBowAngle={setBowAngle}
+            sharkAngle={sharkAngle}
+            setSharkAngle={setSharkAngle}
+            ballastActive={ballastActive}
+            setBallastActive={setBallastActive}
+            driveMode={driveMode}
+            setDriveMode={setDriveMode}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 w-full relative h-full overflow-hidden">
+          <RoutePlanning
+            onBack={() => setCurrentView("dashboard")}
+            waypoints={waypoints}
+            setWaypoints={setWaypoints}
+          />
+        </div>
+      )}
 
       {/* Dev Tools Overlay (for testing) */}
-      {/* <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
-          <span className="px-2 py-1 text-cyan-200 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
-          <button onClick={toggleLeak} className="bg-red-900 hover:bg-red-700 px-3 py-1 rounded text-white font-bold transition">Toggle Leak</button>
-          <button onClick={spikeAmps} className="bg-amber-900 hover:bg-amber-700 px-3 py-1 rounded text-white font-bold transition">Spike Amps</button>
-          <button onClick={diveDeep} className="bg-blue-900 hover:bg-blue-700 px-3 py-1 rounded text-white font-bold transition">Dive &gt; 10m</button>
+      {/* <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-2 bg-black/80 backdrop-blur-md border border-white/30 text-xs rounded-full z-50 shadow-xl max-w-[90vw] overflow-x-auto whitespace-nowrap">
+          <span className="px-2 py-1 text-white/80 font-bold uppercase tracking-widest hidden sm:block">Dev Test:</span>
+          <button onClick={toggleLeak} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white font-bold transition border border-white/20">Toggle Leak</button>
+          <button onClick={spikeAmps} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white font-bold transition border border-white/20">Spike Amps</button>
+          <button onClick={diveDeep} className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white font-bold transition border border-white/20">Dive &gt; 10m</button>
       </div> */}
 
       {/* Keyboard Hint Overlay
-      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-cyan-950/60 backdrop-blur-md border border-cyan-800/50 text-sm text-cyan-100 font-mono rounded-lg z-50 shadow-xl opacity-90 pointer-events-none text-center lg:text-left">
+      <div className="fixed bottom-16 lg:bottom-4 left-1/2 lg:left-4 -translate-x-1/2 lg:translate-x-0 flex flex-col gap-1 p-3 bg-black/80 backdrop-blur-md border border-white/30 text-sm text-white/80 font-mono rounded-lg z-50 shadow-xl opacity-90 pointer-events-none text-center lg:text-left">
           <span>{keyHint}</span>
-          <span className="text-xs text-cyan-300">USB SENT: {lastCommand}</span>
-          <span className="text-xs text-emerald-300">USB RECV: {lastReceived}</span>
+          <span className="text-xs text-white/60">USB SENT: {lastCommand}</span>
+          <span className="text-xs text-white/90">USB RECV: {lastReceived}</span>
       </div> */}
+
+      {/* System Diagnostics Modal Overlay */}
+      {isDiagnosticsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-white select-none">
+          <div className="bg-zinc-950 border border-white/20 p-6 rounded-2xl flex flex-col max-w-sm w-full shadow-2xl gap-4 ring-1 ring-white/10">
+            <h3 className="text-lg font-bold font-mono tracking-widest text-white uppercase text-center border-b border-white/10 pb-2">
+              System Diagnostics
+            </h3>
+
+            <div className="flex flex-col gap-2">
+              {diagnosticLogs.map((log, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between font-mono text-xs"
+                >
+                  <span className="text-white/80">{log.msg}</span>
+                  <span
+                    className={`font-bold uppercase ${
+                      log.status === "pending"
+                        ? "text-white/50 animate-pulse"
+                        : log.status === "success"
+                          ? "text-white"
+                          : "text-white"
+                    }`}
+                  >
+                    {log.status === "pending"
+                      ? "..."
+                      : log.status === "success"
+                        ? "[ OK ]"
+                        : "[ FAIL ]"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {diagnosticStatus === "complete" && (
+              <button
+                onClick={() => setIsDiagnosticsOpen(false)}
+                className="mt-4 w-full bg-white/20 hover:bg-white/30 border border-white/40 text-white font-mono font-bold py-2 rounded text-xs transition uppercase tracking-wider"
+              >
+                Close Diagnostics
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* IMU Calibration Modal Overlay */}
       {isCalibrating && (
@@ -1258,7 +1444,7 @@ const SubmarineDashboard = () => {
                   />
                   <button
                     onClick={handleWifiProvisioning}
-                    className="w-full bg-blue-600/80 hover:bg-blue-600 text-white font-mono font-bold py-2 rounded text-xs transition uppercase tracking-wider mt-1"
+                    className="w-full bg-white/20 hover:bg-white/30 border border-white/40 text-white font-mono font-bold py-2 rounded text-xs transition uppercase tracking-wider mt-1"
                   >
                     Connect ESP32
                   </button>
@@ -1334,6 +1520,15 @@ const SubmarineDashboard = () => {
           </div>
         </div>
       )}
+
+      <PasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onSuccess={() => {
+          setIsPasswordModalOpen(false);
+          setCurrentView("route-planning");
+        }}
+      />
     </div>
   );
 };

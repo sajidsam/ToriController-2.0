@@ -17,7 +17,9 @@
         "@capacitor/core": "^8.4.1",
         "@capacitor/ios": "^8.4.1",
         "@serialport/parser-readline": "^13.0.0",
+        "leaflet": "^1.9.4",
         "node-wifi": "^2.0.16",
+        "react-leaflet": "^5.0.0",
         "serialport": "^13.0.0"
     },
     "devDependencies": {
@@ -52,7 +54,6 @@
     "build": {
         "appId": "com.toricontroller.app",
         "productName": "ToriController",
-        
         "directories": {
             "output": "/tmp/ToriBuildOutput"
         },
