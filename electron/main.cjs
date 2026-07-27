@@ -10,6 +10,9 @@ wifi.init({
 // Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
+// Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
+app.commandLine.appendSwitch('ignore-certificate-errors');
+
 let win;
 
 function createWindow() {
