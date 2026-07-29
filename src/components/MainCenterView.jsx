@@ -169,21 +169,9 @@ const MainCenterView = ({
       }
     };
 
-    useEffect(() => {
-        let isRunning = true;
-        const loop = async () => {
-            if (!isRunning) return;
-            if (detectRef.current) {
-                await detectRef.current();
-            }
-            if (isRunning) {
-                requestRef.current = requestAnimationFrame(loop);
-            }
-        };
-
-        if (model) {
-            loop();
-        }
+    if (model) {
+        loop();
+    }
 
     return () => {
       isRunning = false;
