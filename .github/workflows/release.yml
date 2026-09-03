@@ -2,6 +2,8 @@ name: Build and Release ToriController
 
 on:
   push:
+    branches:
+      - "main"
     tags:
       - "v*"
   workflow_dispatch:
@@ -24,7 +26,7 @@ jobs:
         os: [windows-latest, macos-latest]
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -36,10 +38,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup MSVC (Windows only)
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-
       - name: Build Web Frontend
         run: npm run build
 
@@ -49,7 +47,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Package macOS App
+      - name: Package macOS Application
         if: runner.os == 'macOS'
         run: npx electron-builder --mac --publish never
         env:
@@ -69,7 +67,7 @@ jobs:
     name: Publish to GitHub Releases
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: always() && needs.build.result == 'success'
 
     steps:
       - name: Checkout repository

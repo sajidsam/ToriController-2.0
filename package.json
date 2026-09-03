@@ -71,6 +71,7 @@
         "copyright": "Copyright © 2026 Sajid Sam",
         "compression": "maximum",
         "asar": true,
+        "npmRebuild": false,
         "asarUnpack": [
             "**/node_modules/@serialport/bindings-cpp/**",
             "**/node_modules/serialport/**",
