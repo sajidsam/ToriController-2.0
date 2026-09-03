@@ -55,6 +55,8 @@ Thumbs.db
 *.pt
 *.jpg
 *.png
+!src/assets/*
+!electron/assets/*
 *.cjs
 *.js
 !src/utils/*.js
@@ -63,3 +65,5 @@ Thumbs.db
 !src/main.jsx
 !src/App.jsx
 .venv/
+raw_models/
+

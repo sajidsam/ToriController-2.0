@@ -1,5 +1,16 @@
 {
     "name": "toricontroller",
+    "productName": "ToriController",
+    "description": "ToriController - Advanced ROV and Submarine Ground Control Station",
+    "author": {
+        "name": "Sajid Sam",
+        "url": "https://github.com/sajidsam"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sajidsam/ToriController-2.0.git"
+    },
+    "homepage": "https://github.com/sajidsam/ToriController-2.0",
     "private": true,
     "version": "2.0.10",
     "type": "module",
@@ -10,6 +21,9 @@
         "start": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
         "build": "vite build",
         "dist": "npm run build && electron-builder",
+        "dist:win": "npm run build && electron-builder --win --x64",
+        "dist:portable": "npm run build && electron-builder --win portable --x64",
+        "dist:mac": "npm run build && electron-builder --mac",
         "preview": "vite preview",
         "lint": "eslint ."
     },
@@ -54,24 +68,84 @@
     "build": {
         "appId": "com.toricontroller.app",
         "productName": "ToriController",
+        "copyright": "Copyright © 2026 Sajid Sam",
+        "compression": "maximum",
+        "asar": true,
+        "asarUnpack": [
+            "**/node_modules/@serialport/bindings-cpp/**",
+            "**/node_modules/serialport/**",
+            "**/node_modules/node-wifi/**"
+        ],
         "directories": {
             "output": "dist-electron"
         },
         "files": [
             "dist/**/*",
             "electron/**/*",
-            "package.json"
+            "package.json",
+            "!**/*.map",
+            "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+            "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+            "!**/node_modules/*.d.ts",
+            "!**/node_modules/.bin"
         ],
         "win": {
-            "target": "nsis",
-            "icon": "src/assets/hero.ico"
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ],
+            "icon": "electron/assets/hero.ico",
+            "requestedExecutionLevel": "asInvoker"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "allowElevation": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "ToriController",
+            "uninstallDisplayName": "ToriController",
+            "installerIcon": "electron/assets/hero.ico",
+            "uninstallerIcon": "electron/assets/hero.ico",
+            "installerHeaderIcon": "electron/assets/hero.ico",
+            "deleteAppDataOnUninstall": false,
+            "artifactName": "${productName}-Setup-${version}.${ext}"
+        },
+        "portable": {
+            "artifactName": "${productName}-Portable-${version}.${ext}"
         },
         "mac": {
-            "target": "dmg",
-            "icon": "src/assets/hero_512.png"
+            "target": [
+                "dmg",
+                "zip"
+            ],
+            "icon": "electron/assets/hero_512.png",
+            "category": "public.app-category.utilities",
+            "artifactName": "${productName}-${version}-Mac.${ext}"
         },
         "linux": {
-            "target": "AppImage"
+            "target": [
+                "AppImage"
+            ],
+            "icon": "electron/assets/hero_512.png",
+            "category": "Utility",
+            "artifactName": "${productName}-${version}-Linux.${ext}"
+        },
+        "publish": {
+            "provider": "github",
+            "owner": "sajidsam",
+            "repo": "ToriController-2.0"
         }
     }
 }

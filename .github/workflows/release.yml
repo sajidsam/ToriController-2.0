@@ -5,14 +5,23 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release Tag Name (e.g. v2.0.10)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
 
 jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest, windows-2019]
+        os: [windows-latest, macos-latest]
 
     steps:
       - name: Checkout code
@@ -28,23 +37,23 @@ jobs:
         run: npm ci
 
       - name: Setup MSVC (Windows only)
-        if: matrix.os == 'windows-2019'
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure node-gyp for VS 2019 (Windows only)
-        if: matrix.os == 'windows-2019'
-        run: |
-          npm config set msvs_version 2019
-          npm install -g node-gyp
+      - name: Build Web Frontend
+        run: npm run build
 
-      - name: Build and Package Electron App
-        run: |
-          npm run build
-          npx electron-builder --publish never
+      - name: Package Windows Executables
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win --x64 --publish never
         env:
-          # Disable automatic code signing search to build unsigned DMG/EXE successfully
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          GYP_MSVS_VERSION: "2019"
+
+      - name: Package macOS App
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -53,17 +62,33 @@ jobs:
           path: |
             dist-electron/*.exe
             dist-electron/*.dmg
+            dist-electron/*.zip
           if-no-files-found: error
 
   release:
-    name: Create GitHub Release
+    name: Publish to GitHub Releases
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
-      contents: write
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine Release Tag
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            TAG="v${VERSION}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Release tag is: ${TAG}"
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -71,14 +96,19 @@ jobs:
 
       - name: Organize release files
         run: |
-          mkdir release-files
-          # Find and copy all exe and dmg files to release-files directory
-          find artifacts -type f \( -name "*.exe" -o -name "*.dmg" \) -exec cp {} release-files/ \;
-          ls -R release-files
+          mkdir -p release-files
+          # Copy all .exe, .dmg, and .zip files to release-files directory
+          find artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" \) -exec cp {} release-files/ \;
+          ls -lh release-files/
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ToriController ${{ steps.release_info.outputs.tag }}
           files: release-files/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

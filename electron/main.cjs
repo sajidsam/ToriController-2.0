@@ -10,20 +10,21 @@ wifi.init({
 // Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
-// Allow local HTTPS connections with self-signed/invalid SSL certificates (common in local IP cameras)
-app.commandLine.appendSwitch('ignore-certificate-errors');
-
 let win;
 
 function createWindow() {
   const isMac = process.platform === "darwin";
+  const iconPath = isMac
+    ? path.join(__dirname, "assets/hero_512.png")
+    : path.join(__dirname, "assets/hero.ico");
+
   win = new BrowserWindow({
     width: 1000,
     height: 700,
     frame: false,
     titleBarStyle: isMac ? "hidden" : undefined,
     trafficLightPosition: isMac ? { x: 12, y: 10 } : undefined,
-    icon: path.join(__dirname, "../assets/toriLogo.ico"),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
