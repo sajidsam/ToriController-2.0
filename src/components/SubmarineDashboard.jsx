@@ -134,16 +134,16 @@ const SubmarineDashboard = () => {
     const checkUpdate = async () => {
       try {
         const response = await fetch(
-          "https://api.github.com/repos/sifat-99/ToriController-2.0/releases/latest",
+          "https://api.github.com/repos/sajidsam/ToriController-2.0/releases/latest",
         );
         if (!response.ok) return;
         const data = await response.json();
-        const latest = data.tag_name; // e.g. "v2.0.2" or "2.0.2"
+        const latest = data.tag_name; // e.g. "v2.0.10" or "2.0.10"
         if (!latest) return;
 
         // Clean v prefix if present
         const cleanLatest = latest.replace(/^v/, "");
-        const cleanCurrent = "2.0.5"; // Matches package.json
+        const cleanCurrent = "2.0.10"; // Matches package.json
 
         if (cleanLatest !== cleanCurrent) {
           const latestParts = cleanLatest.split(".").map(Number);
@@ -165,7 +165,7 @@ const SubmarineDashboard = () => {
             setLatestVersion(latest);
             setReleaseUrl(
               data.html_url ||
-                "https://github.com/sifat-99/ToriController-2.0/releases",
+                "https://github.com/sajidsam/ToriController-2.0/releases",
             );
             setUpdateAvailable(true);
           }
@@ -1487,7 +1487,7 @@ const SubmarineDashboard = () => {
               </p>
               <div className="flex justify-center gap-4 text-[11px] font-mono mt-2 bg-white/5 border border-white/10 py-1.5 px-3 rounded">
                 <span>
-                  CURRENT: <span className="font-bold">v2.0.5</span>
+                  CURRENT: <span className="font-bold">v2.0.10</span>
                 </span>
                 <span className="text-white/40">|</span>
                 <span>
