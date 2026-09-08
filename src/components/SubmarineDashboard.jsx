@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Globe, Download } from "lucide-react";
 import TopNavBar from "./TopNavBar";
-import TelemetryPanel from "./TelemetryPanel";
+
 import ControlPanel from "./ControlPanel";
 import MainCenterView from "./MainCenterView";
 import RoutePlanning from "./RoutePlanning";
@@ -1107,48 +1107,7 @@ const SubmarineDashboard = () => {
 
       {currentView === "dashboard" ? (
         <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden min-h-0 w-full">
-          <TelemetryPanel
-            waypoints={waypoints}
-            depth={depth}
-            amps={amps}
-            rpm={rpm}
-            temp={temp}
-            obsDist={obsDist}
-            tempError={tempError}
-            lat={lat}
-            lng={lng}
-            sats={sats}
-            pitch={pitch}
-            roll={roll}
-            heading={heading}
-            accel={accel}
-            posX={posX}
-            posY={posY}
-            posZ={posZ}
-            velX={velX}
-            referenceGps={referenceGps}
-            drLat={drLat}
-            drLng={drLng}
-            drPath={drPath}
-            gpsPath={gpsPath}
-            computedVelocity={computedVelocity}
-            totalDistance={totalDistance}
-            isPhoneConnected={isPhoneConnected}
-            onResetGps={() => {
-              setReferenceGps(null);
-              setDrPath([]);
-              setGpsPath([]);
-              setTotalDistance(0.0);
-            }}
-            onResetTrack={() => {
-              sendCommand("RESET_POS\n");
-              setDrPath([]);
-              setTotalDistance(0.0);
-              drPosRef.current = { x: 0, y: 0, distance: 0 };
-              setPosX(0);
-              setPosY(0);
-            }}
-          />
+
 
           <MainCenterView
             pitch={pitch}
